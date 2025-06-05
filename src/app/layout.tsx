@@ -36,14 +36,14 @@ export default function RootLayout({
 }>) {
   const siteSettings = getSiteSettings();
 
-  const activeHeaderSnippets = siteSettings.snippets
-    .filter((snippet: CodeSnippet) => snippet.isActive && snippet.location === 'header')
+  const activeGlobalHeaderSnippets = siteSettings.snippets
+    .filter((snippet: CodeSnippet) => snippet.isActive && snippet.location === 'globalHeader')
     .map((snippet: CodeSnippet) => snippet.code);
 
-  const activeFooterSnippets = siteSettings.snippets
-    .filter((snippet: CodeSnippet) => snippet.isActive && snippet.location === 'footer')
+  const activeGlobalFooterSnippets = siteSettings.snippets
+    .filter((snippet: CodeSnippet) => snippet.isActive && snippet.location === 'globalFooter')
     .map((snippet: CodeSnippet) => snippet.code)
-    .join('\\n'); // Join footer snippets into a single string for dangerouslySetInnerHTML
+    .join('\n'); 
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -51,18 +51,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
-        {/* 
-          It's generally recommended to place the main AdSense script directly
-          if it's fundamental, or manage it via one of your snippets if you prefer.
-          Make sure it's not duplicated if you add it as a snippet.
-        */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_PUBLISHER_ID"
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-        {/* Active header snippets are injected client-side by HeadInjectorClient */}
+        {/* Active globalHeader snippets are injected client-side by HeadInjectorClient */}
       </head>
       <body
         className={cn(
@@ -71,8 +66,8 @@ export default function RootLayout({
           ptSans.variable
         )}
       >
-        {/* Client component to inject header scripts after mount */}
-        {activeHeaderSnippets.length > 0 && <HeadInjectorClient htmlStrings={activeHeaderSnippets} />}
+        {/* Client component to inject globalHeader scripts after mount */}
+        {activeGlobalHeaderSnippets.length > 0 && <HeadInjectorClient htmlStrings={activeGlobalHeaderSnippets} />}
 
         <div className="flex flex-col min-h-screen">
           <Navbar />
@@ -83,9 +78,9 @@ export default function RootLayout({
         </div>
         <Toaster />
         
-        {/* Injected Footer Scripts */}
-        {activeFooterSnippets && (
-          <div dangerouslySetInnerHTML={{ __html: activeFooterSnippets }} />
+        {/* Injected Global Footer Scripts */}
+        {activeGlobalFooterSnippets && (
+          <div dangerouslySetInnerHTML={{ __html: activeGlobalFooterSnippets }} />
         )}
       </body>
     </html>

@@ -17,7 +17,7 @@ let settings: SiteSettings = {
 
   gtag('config', 'GA_MEASUREMENT_ID');
 </script>`,
-      location: 'header',
+      location: 'globalHeader', // Updated location
       isActive: true,
     },
     {
@@ -26,7 +26,7 @@ let settings: SiteSettings = {
       code: `<script>
   console.log("Default footer script loaded via snippet manager.");
 </script>`,
-      location: 'footer',
+      location: 'globalFooter', // Updated location
       isActive: true,
     },
     {
@@ -35,25 +35,33 @@ let settings: SiteSettings = {
       code: `<script>
   console.log("This is an example pixel script and it is currently inactive.");
 </script>`,
-      location: 'header',
+      location: 'globalHeader', // Updated location
       isActive: false,
+    },
+    {
+      id: 'post-specific-ad-example',
+      name: 'Ad Before Post Content (Example)',
+      code: `<div style="margin: 1rem 0; padding: 1rem; background-color: #f0f0f0; text-align: center;">Example AdSense Unit - Before Post Content (300x250)</div>`,
+      location: 'beforePostContent',
+      isActive: true,
     }
   ],
 };
 
 export const getSiteSettings = (): SiteSettings => {
   // In a real app, you'd fetch this from a database
-  // Make sure to return a deep copy if mockPosts can be mutated elsewhere,
-  // or ensure this is the single source of truth.
   return JSON.parse(JSON.stringify(settings));
 };
 
 export const updateSiteSettings = (newSettings: Partial<SiteSettings>): SiteSettings => {
   // In a real app, you'd save this to a database
-  // Merge snippet arrays carefully if newSettings.snippets is partial.
-  // For this mock, we'll assume newSettings.snippets is the complete new array if provided.
   if (newSettings.snippets) {
-    settings.snippets = newSettings.snippets;
+    // Ensure snippets are properly cast if Zod schema differs slightly or for new snippets
+    settings.snippets = newSettings.snippets.map(snippet => ({
+      ...snippet,
+      // Ensure default values for potentially missing fields if schema is loose
+      isActive: snippet.isActive === undefined ? true : snippet.isActive, 
+    })) as CodeSnippet[];
   }
   if (newSettings.adsTxtContent !== undefined) {
     settings.adsTxtContent = newSettings.adsTxtContent;

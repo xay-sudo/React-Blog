@@ -19,7 +19,13 @@ export interface Post {
   tags?: string[];
 }
 
-export type SnippetLocation = 'header' | 'footer';
+export type SnippetLocation = 
+  | 'globalHeader' 
+  | 'globalFooter'
+  | 'postHeader'
+  | 'postFooter'
+  | 'beforePostContent'
+  | 'afterPostContent';
 
 export interface CodeSnippet {
   id: string;

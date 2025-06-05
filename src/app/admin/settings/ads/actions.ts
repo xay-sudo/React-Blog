@@ -3,14 +3,21 @@
 
 import { z } from 'zod';
 import { updateSiteSettings, type SiteSettings } from '@/data/siteSettings';
-import type { CodeSnippet } from '@/types'; // Import CodeSnippet type
+import type { CodeSnippet } from '@/types'; 
 
 // Schema for a single code snippet
 const CodeSnippetSchema = z.object({
   id: z.string(),
   name: z.string().min(1, { message: "Snippet name cannot be empty." }),
   code: z.string().min(1, { message: "Snippet code cannot be empty." }),
-  location: z.enum(['header', 'footer']),
+  location: z.enum([
+    'globalHeader', 
+    'globalFooter',
+    'postHeader',
+    'postFooter',
+    'beforePostContent',
+    'afterPostContent'
+  ]),
   isActive: z.boolean(),
 });
 
@@ -27,14 +34,11 @@ export type AdSettingsActionInput = z.infer<typeof AdSettingsActionInputSchema>;
 
 export async function saveAdSettingsAction(values: AdSettingsActionInput): Promise<void> {
   try {
-    // Server-side validation against the schema.
     const validatedValues = AdSettingsActionInputSchema.parse(values);
 
-    // The `validatedValues` object now correctly matches the structure expected by `updateSiteSettings`
-    // if `SiteSettings` in `data/siteSettings.ts` expects `snippets` as an array of `CodeSnippet`.
     updateSiteSettings({
       adsTxtContent: validatedValues.adsTxtContent,
-      snippets: validatedValues.snippets as CodeSnippet[], // Cast needed if Zod schema slightly differs from TS type
+      snippets: validatedValues.snippets as CodeSnippet[], 
     });
 
   } catch (error) {

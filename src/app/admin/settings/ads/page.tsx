@@ -2,7 +2,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form"; // Removed Controller as it's not explicitly used for Select in this version
 import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -26,14 +26,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { getSiteSettings } from "@/data/siteSettings";
 import { saveAdSettingsAction } from './actions';
 import type { AdSettingsActionInput } from './actions';
-import type { CodeSnippet, SnippetLocation } from '@/types';
+import type { SnippetLocation } from '@/types';
 import { Trash2, PlusCircle } from "lucide-react";
 
 const codeSnippetSchema = z.object({
   id: z.string(),
   name: z.string().min(1, "Snippet name is required."),
   code: z.string().min(1, "Snippet code is required."),
-  location: z.enum(['header', 'footer'], { required_error: "Location is required."}),
+  location: z.enum([
+    'globalHeader', 
+    'globalFooter',
+    'postHeader',
+    'postFooter',
+    'beforePostContent',
+    'afterPostContent'
+  ], { required_error: "Location is required."}),
   isActive: z.boolean(),
 });
 
@@ -66,12 +73,12 @@ export default function AdSettingsPage() {
   });
 
   useEffect(() => {
-    const freshSettings = getSiteSettings(); // Re-fetch in case of updates from other sources/tabs
+    const freshSettings = getSiteSettings(); 
     form.reset({
         adsTxtContent: freshSettings.adsTxtContent || "",
         snippets: freshSettings.snippets || [],
     });
-  }, [form, router]); // Added router to dependency array to re-fetch on navigation (if needed)
+  }, [form, router]);
 
   const {formState: {isSubmitting, errors}} = form;
 
@@ -94,10 +101,10 @@ export default function AdSettingsPage() {
 
   const addNewSnippet = () => {
     append({
-      id: `new-${Math.random().toString(36).substr(2, 9)}`, // Temporary client-side ID
+      id: `new-${Math.random().toString(36).substr(2, 9)}`, 
       name: "",
       code: "",
-      location: "header",
+      location: "globalHeader" as SnippetLocation, // Default to globalHeader
       isActive: true,
     });
   };
@@ -179,8 +186,12 @@ export default function AdSettingsPage() {
                                                     <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="header">Header (&lt;head&gt;)</SelectItem>
-                                                    <SelectItem value="footer">Footer (before &lt;/body&gt;)</SelectItem>
+                                                    <SelectItem value="globalHeader">Global: Header (&lt;head&gt;)</SelectItem>
+                                                    <SelectItem value="globalFooter">Global: Footer (before &lt;/body&gt;)</SelectItem>
+                                                    <SelectItem value="postHeader">Post Page: Header (&lt;head&gt;)</SelectItem>
+                                                    <SelectItem value="postFooter">Post Page: Footer (before &lt;/body&gt;)</SelectItem>
+                                                    <SelectItem value="beforePostContent">Post Page: Before Content</SelectItem>
+                                                    <SelectItem value="afterPostContent">Post Page: After Content</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
