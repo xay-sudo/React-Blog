@@ -7,8 +7,9 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
-import { getSiteSettings } from '@/data/siteSettings'; // Import site settings
-import HeadInjectorClient from '@/components/layout/HeadInjectorClient'; // Import the new component
+import { getSiteSettings } from '@/data/siteSettings';
+import HeadInjectorClient from '@/components/layout/HeadInjectorClient';
+import type { CodeSnippet } from '@/types';
 
 const playfairDisplay = Playfair_Display({
   subsets: ['latin'],
@@ -35,29 +36,33 @@ export default function RootLayout({
 }>) {
   const siteSettings = getSiteSettings();
 
+  const activeHeaderSnippets = siteSettings.snippets
+    .filter((snippet: CodeSnippet) => snippet.isActive && snippet.location === 'header')
+    .map((snippet: CodeSnippet) => snippet.code);
+
+  const activeFooterSnippets = siteSettings.snippets
+    .filter((snippet: CodeSnippet) => snippet.isActive && snippet.location === 'footer')
+    .map((snippet: CodeSnippet) => snippet.code)
+    .join('\\n'); // Join footer snippets into a single string for dangerouslySetInnerHTML
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
-        {/* AdSense Script (if not managed by headerScripts) */}
-        {/* You might choose to include the main AdSense script here directly OR via the headerScripts setting */}
+        {/* 
+          It's generally recommended to place the main AdSense script directly
+          if it's fundamental, or manage it via one of your snippets if you prefer.
+          Make sure it's not duplicated if you add it as a snippet.
+        */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_PUBLISHER_ID"
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
-
-        {/* 
-          Injected Header Scripts:
-          The headerScripts string (from site settings) is injected into the document.head 
-          on the client-side using the HeadInjectorClient component.
-          This avoids server-side hydration errors that can occur if raw HTML (like a <div>)
-          is incorrectly placed within the <head> during server rendering.
-          The HeadInjectorClient component handles the DOM manipulation safely on the client.
-        */}
+        {/* Active header snippets are injected client-side by HeadInjectorClient */}
       </head>
       <body
         className={cn(
@@ -67,7 +72,7 @@ export default function RootLayout({
         )}
       >
         {/* Client component to inject header scripts after mount */}
-        {siteSettings.headerScripts && <HeadInjectorClient htmlString={siteSettings.headerScripts} />}
+        {activeHeaderSnippets.length > 0 && <HeadInjectorClient htmlStrings={activeHeaderSnippets} />}
 
         <div className="flex flex-col min-h-screen">
           <Navbar />
@@ -78,9 +83,9 @@ export default function RootLayout({
         </div>
         <Toaster />
         
-        {/* Injected Footer Scripts: A div wrapper here is valid HTML before </body>. */}
-        {siteSettings.footerScripts && (
-          <div dangerouslySetInnerHTML={{ __html: siteSettings.footerScripts }} />
+        {/* Injected Footer Scripts */}
+        {activeFooterSnippets && (
+          <div dangerouslySetInnerHTML={{ __html: activeFooterSnippets }} />
         )}
       </body>
     </html>

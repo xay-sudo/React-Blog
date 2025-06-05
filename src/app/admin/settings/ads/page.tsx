@@ -2,9 +2,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,18 +18,30 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { getSiteSettings } from "@/data/siteSettings";
-import { useEffect } from "react";
-import { saveAdSettingsAction, type AdSettingsActionInput } from './actions';
+import { saveAdSettingsAction } from './actions';
+import type { AdSettingsActionInput } from './actions';
+import type { CodeSnippet, SnippetLocation } from '@/types';
+import { Trash2, PlusCircle } from "lucide-react";
+
+const codeSnippetSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Snippet name is required."),
+  code: z.string().min(1, "Snippet code is required."),
+  location: z.enum(['header', 'footer'], { required_error: "Location is required."}),
+  isActive: z.boolean(),
+});
 
 const formSchema = z.object({
   adsTxtContent: z.string().min(10, {
     message: "ads.txt content must be at least 10 characters if provided.",
   }).optional().or(z.literal('')),
-  headerScripts: z.string().optional().or(z.literal('')),
-  footerScripts: z.string().optional().or(z.literal('')),
+  snippets: z.array(codeSnippetSchema),
 });
 
 type AdSettingsFormValues = z.infer<typeof formSchema>;
@@ -43,21 +56,24 @@ export default function AdSettingsPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       adsTxtContent: currentSettings.adsTxtContent || "",
-      headerScripts: currentSettings.headerScripts || "",
-      footerScripts: currentSettings.footerScripts || "",
+      snippets: currentSettings.snippets || [],
     },
   });
-  
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "snippets",
+  });
+
   useEffect(() => {
+    const freshSettings = getSiteSettings(); // Re-fetch in case of updates from other sources/tabs
     form.reset({
-        adsTxtContent: currentSettings.adsTxtContent || "",
-        headerScripts: currentSettings.headerScripts || "",
-        footerScripts: currentSettings.footerScripts || "",
+        adsTxtContent: freshSettings.adsTxtContent || "",
+        snippets: freshSettings.snippets || [],
     });
-  }, [currentSettings, form]);
+  }, [form, router]); // Added router to dependency array to re-fetch on navigation (if needed)
 
-
-  const {formState: {isSubmitting}} = form;
+  const {formState: {isSubmitting, errors}} = form;
 
   const handleSubmit = async (values: AdSettingsFormValues) => {
     try {
@@ -76,100 +92,142 @@ export default function AdSettingsPage() {
     }
   };
 
+  const addNewSnippet = () => {
+    append({
+      id: `new-${Math.random().toString(36).substr(2, 9)}`, // Temporary client-side ID
+      name: "",
+      code: "",
+      location: "header",
+      isActive: true,
+    });
+  };
+
   return (
     <div className="space-y-8">
         <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary">
             Advertising Settings
         </h1>
-        <Card className="shadow-xl w-full max-w-3xl mx-auto">
-        <CardHeader>
-            <CardTitle className="font-headline text-2xl sm:text-3xl">
-            Manage Ad Configurations
-            </CardTitle>
-            <CardDescription>
-            Configure your ads.txt file and inject custom scripts into your site's header or footer.
-            </CardDescription>
-        </CardHeader>
-        <CardContent>
-            <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+        
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+            <Card className="shadow-xl">
+              <CardHeader>
+                  <CardTitle className="font-headline text-2xl">ads.txt Content</CardTitle>
+                  <CardDescription>
+                      Manage the content of your <code>ads.txt</code> file. This will be served at <code>/ads.txt</code>.
+                  </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <FormField
-                control={form.control}
-                name="adsTxtContent"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel className="text-lg">ads.txt Content</FormLabel>
-                    <FormControl>
-                        <Textarea
-                        placeholder="google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0..."
-                        {...field}
-                        rows={8}
-                        className="font-mono text-sm"
-                        />
-                    </FormControl>
-                    <FormDescription>
-                        Enter the full content for your <code>ads.txt</code> file. This file will be served at <code>/ads.txt</code>.
-                        Ensure each entry is on a new line.
-                    </FormDescription>
-                    <FormMessage />
-                    </FormItem>
-                )}
+                  control={form.control}
+                  name="adsTxtContent"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel className="sr-only">ads.txt Content</FormLabel>
+                      <FormControl>
+                          <Textarea
+                          placeholder="google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0..."
+                          {...field}
+                          rows={8}
+                          className="font-mono text-sm"
+                          />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
                 />
+              </CardContent>
+            </Card>
 
-                <FormField
-                control={form.control}
-                name="headerScripts"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel className="text-lg">Header Scripts</FormLabel>
-                    <FormControl>
-                        <Textarea
-                        placeholder="<script>...</script> or <meta ...>"
-                        {...field}
-                        rows={8}
-                        className="font-mono text-sm"
-                        />
-                    </FormControl>
-                    <FormDescription>
-                        Scripts or meta tags to be injected into the <code>&lt;head&gt;</code> section of every page.
-                        Useful for AdSense auto-ads, analytics, verification tags, etc.
-                    </FormDescription>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-
-                <FormField
-                control={form.control}
-                name="footerScripts"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel className="text-lg">Footer Scripts</FormLabel>
-                    <FormControl>
-                        <Textarea
-                        placeholder="<script>...</script>"
-                        {...field}
-                        rows={8}
-                        className="font-mono text-sm"
-                        />
-                    </FormControl>
-                    <FormDescription>
-                        Scripts to be injected right before the closing <code>&lt;/body&gt;</code> tag on every page.
-                    </FormDescription>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                
-                <div className="flex justify-end space-x-3 pt-4">
-                <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                    {isSubmitting ? "Saving Settings..." : "Save Ad Settings"}
-                </Button>
-                </div>
-            </form>
-            </Form>
-        </CardContent>
-        </Card>
+            <Card className="shadow-xl">
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle className="font-headline text-2xl">Code Snippets</CardTitle>
+                            <CardDescription>
+                                Manage custom HTML/JS/CSS code snippets to be injected into your site.
+                            </CardDescription>
+                        </div>
+                        <Button type="button" onClick={addNewSnippet} variant="outline">
+                            <PlusCircle className="mr-2 h-5 w-5" /> Add Snippet
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {fields.map((field, index) => (
+                        <Card key={field.id} className="p-4 border shadow-md bg-card/50">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <FormField
+                                    control={form.control}
+                                    name={`snippets.${index}.name`}
+                                    render={({ field: f }) => (
+                                        <FormItem>
+                                            <FormLabel>Snippet Name</FormLabel>
+                                            <FormControl><Input placeholder="e.g., Google Analytics" {...f} /></FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`snippets.${index}.location`}
+                                    render={({ field: f }) => (
+                                        <FormItem>
+                                            <FormLabel>Location</FormLabel>
+                                            <Select onValueChange={f.onChange} defaultValue={f.value as SnippetLocation}>
+                                                <FormControl>
+                                                    <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="header">Header (&lt;head&gt;)</SelectItem>
+                                                    <SelectItem value="footer">Footer (before &lt;/body&gt;)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                             <FormField
+                                control={form.control}
+                                name={`snippets.${index}.code`}
+                                render={({ field: f }) => (
+                                    <FormItem className="mb-4">
+                                        <FormLabel>Code</FormLabel>
+                                        <FormControl><Textarea placeholder="<script>...</script> or <style>...</style>" {...f} rows={6} className="font-mono text-sm" /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <div className="flex justify-between items-center">
+                                <FormField
+                                    control={form.control}
+                                    name={`snippets.${index}.isActive`}
+                                    render={({ field: f }) => (
+                                        <FormItem className="flex flex-row items-center space-x-2">
+                                            <FormControl><Switch checked={f.value} onCheckedChange={f.onChange} /></FormControl>
+                                            <FormLabel className="cursor-pointer">Active</FormLabel>
+                                        </FormItem>
+                                    )}
+                                />
+                                <Button type="button" variant="destructive" size="sm" onClick={() => remove(index)}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Snippet
+                                </Button>
+                            </div>
+                            {errors.snippets?.[index] && <FormMessage className="mt-2">Please correct errors in this snippet.</FormMessage>}
+                        </Card>
+                    ))}
+                    {fields.length === 0 && <p className="text-muted-foreground text-center py-4">No snippets added yet. Click "Add Snippet" to create one.</p>}
+                </CardContent>
+            </Card>
+            
+            <div className="flex justify-end space-x-3 pt-4 sticky bottom-0 bg-background py-4 border-t border-border -mx-8 px-8">
+              <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 text-primary-foreground px-6">
+                {isSubmitting ? "Saving Settings..." : "Save All Settings"}
+              </Button>
+            </div>
+          </form>
+        </Form>
     </div>
   );
 }

@@ -3,45 +3,45 @@
 
 import { z } from 'zod';
 import { updateSiteSettings, type SiteSettings } from '@/data/siteSettings';
+import type { CodeSnippet } from '@/types'; // Import CodeSnippet type
+
+// Schema for a single code snippet
+const CodeSnippetSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, { message: "Snippet name cannot be empty." }),
+  code: z.string().min(1, { message: "Snippet code cannot be empty." }),
+  location: z.enum(['header', 'footer']),
+  isActive: z.boolean(),
+});
 
 // Schema for validating the input to the server action.
-// This should ideally mirror the formSchema in AdSettingsPage.tsx.
 const AdSettingsActionInputSchema = z.object({
   adsTxtContent: z.string().min(10, {
     message: "ads.txt content must be at least 10 characters if provided.",
   }).optional().or(z.literal('')),
-  headerScripts: z.string().optional().or(z.literal('')),
-  footerScripts: z.string().optional().or(z.literal('')),
+  snippets: z.array(CodeSnippetSchema),
 });
 
 // Type for the input values the action expects.
-// Exporting this allows the client component to ensure type compatibility.
 export type AdSettingsActionInput = z.infer<typeof AdSettingsActionInputSchema>;
 
 export async function saveAdSettingsAction(values: AdSettingsActionInput): Promise<void> {
   try {
-    // Optional: Server-side validation against the schema.
-    // Useful if the action might be called from places other than this specific form.
-    // AdSettingsActionInputSchema.parse(values);
+    // Server-side validation against the schema.
+    const validatedValues = AdSettingsActionInputSchema.parse(values);
 
-    // The `values` object structurally matches Partial<SiteSettings>
-    // as defined by the Zod schema.
-    updateSiteSettings(values as Partial<SiteSettings>);
+    // The `validatedValues` object now correctly matches the structure expected by `updateSiteSettings`
+    // if `SiteSettings` in `data/siteSettings.ts` expects `snippets` as an array of `CodeSnippet`.
+    updateSiteSettings({
+      adsTxtContent: validatedValues.adsTxtContent,
+      snippets: validatedValues.snippets as CodeSnippet[], // Cast needed if Zod schema slightly differs from TS type
+    });
 
-    // In a real application with a database, you might revalidate paths here:
-    // revalidatePath('/ads.txt');
-    // revalidatePath('/'); // If header/footer scripts affect all pages
   } catch (error) {
     console.error("Failed to update ad settings in server action:", error);
-
-    // Re-throw the error so it can be caught by the try/catch block
-    // in the client component's handleSubmit function, allowing for
-    // user-facing error messages (e.g., via toast).
     if (error instanceof z.ZodError) {
-      // More specific error message if Zod validation fails server-side
-      throw new Error(`Invalid data: ${error.errors.map(e => e.message).join(', ')}`);
+      throw new Error(`Invalid data: ${error.errors.map(e => `${e.path.join('.')} - ${e.message}`).join(', ')}`);
     }
-    // Generic error for other issues
     throw new Error("Server failed to update ad settings. Please try again.");
   }
 }

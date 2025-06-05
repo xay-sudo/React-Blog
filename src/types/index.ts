@@ -18,3 +18,18 @@ export interface Post {
   category?: string;
   tags?: string[];
 }
+
+export type SnippetLocation = 'header' | 'footer';
+
+export interface CodeSnippet {
+  id: string;
+  name: string;
+  code: string;
+  location: SnippetLocation;
+  isActive: boolean;
+}
+
+export interface SiteSettings {
+  adsTxtContent: string;
+  snippets: CodeSnippet[];
+}
