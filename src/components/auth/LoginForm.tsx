@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,8 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { LogIn } from "lucide-react";
 
 const formSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email address.",
+  identifier: z.string().min(3, {
+    message: "Email or Username must be at least 3 characters.",
   }),
   password: z.string().min(6, {
     message: "Password must be at least 6 characters.",
@@ -34,7 +35,7 @@ export default function LoginForm() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
+      identifier: "",
       password: "",
     },
   });
@@ -56,16 +57,16 @@ export default function LoginForm() {
     // For now, we'll just log the values and show a toast.
     // Example:
     // try {
-    //   const response = await fetch('/api/auth/login', { method: 'POST', body: JSON.stringify(values) });
-    //   if (response.ok) {
-    //     // Handle successful login (e.g., redirect, store token)
-    //     toast({ title: "Login Successful", description: "Welcome back!"});
-    //   } else {
-    //     // Handle login error
-    //     toast({ title: "Login Failed", description: "Invalid email or password.", variant: "destructive" });
-    //   }
+    //   // const response = await fetch('/api/auth/login', { method: 'POST', body: JSON.stringify(values) });
+    //   // if (response.ok) {
+    //   // Handle successful login (e.g., redirect, store token)
+    //   // toast({ title: "Login Successful", description: "Welcome back!"});
+    //   // } else {
+    //   // Handle login error
+    //   // toast({ title: "Login Failed", description: "Invalid credentials.", variant: "destructive" });
+    //   // }
     // } catch (error) {
-    //   toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
+    //   // toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
     // }
   }
 
@@ -82,12 +83,12 @@ export default function LoginForm() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
               control={form.control}
-              name="email"
+              name="identifier"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email Address</FormLabel>
+                  <FormLabel>Email or Username</FormLabel>
                   <FormControl>
-                    <Input placeholder="you@example.com" {...field} />
+                    <Input placeholder="yourname or you@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
