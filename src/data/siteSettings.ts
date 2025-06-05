@@ -3,10 +3,10 @@ import type { SiteSettings, CodeSnippet } from '@/types';
 
 // Initial default settings
 let settings: SiteSettings = {
-  adsTxtContent: `google.com, pub-YOUR_ADSENSE_PUBLISHER_ID, DIRECT, f08c47fec0942fa0\n# Add other ad network entries here`,
+  adsTxtContent: `google.com, pub-YOUR_ADSENSE_PUBLISHER_ID, DIRECT, f08c47fec0942fa0\n# Add other ad network entries here (e.g., for Adsterra, MGID, etc.)`,
   snippets: [
     {
-      id: 'default-ga',
+      id: 'example-ga', // Renamed for clarity
       name: 'Google Analytics (Example)',
       code: `<!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=GA_MEASUREMENT_ID"></script>
@@ -17,7 +17,7 @@ let settings: SiteSettings = {
 
   gtag('config', 'GA_MEASUREMENT_ID');
 </script>`,
-      location: 'globalHeader', // Updated location
+      location: 'globalHeader', 
       isActive: true,
     },
     {
@@ -26,7 +26,7 @@ let settings: SiteSettings = {
       code: `<script>
   console.log("Default footer script loaded via snippet manager.");
 </script>`,
-      location: 'globalFooter', // Updated location
+      location: 'globalFooter', 
       isActive: true,
     },
     {
@@ -35,13 +35,13 @@ let settings: SiteSettings = {
       code: `<script>
   console.log("This is an example pixel script and it is currently inactive.");
 </script>`,
-      location: 'globalHeader', // Updated location
+      location: 'globalHeader', 
       isActive: false,
     },
     {
       id: 'post-specific-ad-example',
-      name: 'Ad Before Post Content (Example)',
-      code: `<div style="margin: 1rem 0; padding: 1rem; background-color: #f0f0f0; text-align: center;">Example AdSense Unit - Before Post Content (300x250)</div>`,
+      name: 'Example Ad Unit - Before Post Content', // Renamed to be more generic
+      code: `<div style="margin: 1rem 0; padding: 1rem; background-color: #f0f0f0; text-align: center;">Your Ad Code Here (e.g., from Adsterra, MGID, etc.) - Before Post Content</div>`,
       location: 'beforePostContent',
       isActive: true,
     }

@@ -2,7 +2,7 @@ import PostCard from '@/components/common/PostCard';
 import PaginationControls from '@/components/common/PaginationControls';
 import { getAllPosts } from '@/data/posts';
 import type { Post } from '@/types';
-import AdsenseAd from '@/components/ads/AdsenseAd'; // Import the Ad component
+// AdsenseAd component is no longer used directly. Ads are managed via Code Snippets.
 
 interface HomePageProps {
   searchParams?: {
@@ -16,10 +16,12 @@ export default function HomePage({ searchParams }: HomePageProps) {
 
   const { posts, totalPages } = getAllPosts(currentPage, postsPerPage);
 
-  // IMPORTANT: Replace with your actual AdSense Publisher ID
-  const adClient = "ca-pub-YOUR_ADSENSE_PUBLISHER_ID"; 
-  // IMPORTANT: Replace with an actual Ad Slot ID for your homepage
-  const homePageAdSlot = "YOUR_ADSENSE_AD_SLOT_ID_HOMEPAGE"; 
+  // Ad placements on the homepage should now be managed via the 
+  // "Code Snippets" feature in the Admin Panel.
+  // For example, you could create a snippet with your ad code and assign it to a
+  // new location if needed, or for simple banners, potentially edit this page's
+  // structure if a snippet location doesn't fit. The existing snippet locations
+  // (like 'beforePostContent') are more geared towards post pages.
 
   return (
     <div className="space-y-12">
@@ -28,14 +30,14 @@ export default function HomePage({ searchParams }: HomePageProps) {
           Welcome to BloggerVerse
         </h1>
 
-        {/* Example Ad Placement on Homepage */}
-        {adClient && adClient !== "ca-pub-YOUR_ADSENSE_PUBLISHER_ID" && homePageAdSlot && homePageAdSlot !== "YOUR_ADSENSE_AD_SLOT_ID_HOMEPAGE" ? (
-          <AdsenseAd adClient={adClient} adSlot={homePageAdSlot} adFormat="auto" />
-        ) : (
-          <div className="my-4 p-4 text-center bg-muted text-muted-foreground rounded-md">
-            <p>Ad placeholder: Configure your AdSense Publisher ID and Ad Slot ID in <code>src/app/page.tsx</code> and <code>src/app/layout.tsx</code> to display ads here.</p>
-          </div>
-        )}
+        {/* 
+          Example Ad Placeholder Removed.
+          To add ads here, use the "Code Snippets" manager in the Admin Panel.
+          You might create a snippet for a "Homepage Banner" location if you customize
+          the snippet locations further, or inject ads via global snippets if appropriate.
+          For very specific placements, you might manually edit this component or 
+          use a snippet with a broad location if the ad code itself handles targeting.
+        */}
 
         {posts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

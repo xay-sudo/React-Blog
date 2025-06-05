@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import AdsenseAd from '@/components/ads/AdsenseAd'; 
+// AdsenseAd component is no longer used directly. Ads are managed via Code Snippets.
 import HeadInjectorClient from '@/components/layout/HeadInjectorClient'; // For postHeader snippets
 
 interface PostPageProps {
@@ -61,16 +61,14 @@ export default function PostPage({ params }: PostPageProps) {
     day: 'numeric',
   });
 
-  const adClient = "ca-pub-YOUR_ADSENSE_PUBLISHER_ID"; 
-  const postPageAdSlot = "YOUR_ADSENSE_AD_SLOT_ID_POSTPAGE";
+  // Ad placements on post pages should now be managed via the 
+  // "Code Snippets" feature in the Admin Panel using locations like
+  // 'beforePostContent', 'afterPostContent', etc.
 
   return (
     <>
       {/* For postHeader snippets */}
       <RenderSnippets snippets={allSnippets} location="postHeader" />
-
-      {/* For postBodyStart snippets (if we add this location later) */}
-      {/* <RenderSnippets snippets={allSnippets} location="postBodyStart" /> */}
 
       <article className="max-w-3xl mx-auto bg-card p-6 sm:p-8 rounded-lg shadow-xl">
         <header className="mb-8">
@@ -126,14 +124,12 @@ export default function PostPage({ params }: PostPageProps) {
         <Separator className="my-8" />
 
         <RenderSnippets snippets={allSnippets} location="afterPostContent" />
-
-        {adClient && adClient !== "ca-pub-YOUR_ADSENSE_PUBLISHER_ID" && postPageAdSlot && postPageAdSlot !== "YOUR_ADSENSE_AD_SLOT_ID_POSTPAGE" ? (
-          <AdsenseAd adClient={adClient} adSlot={postPageAdSlot} adFormat="auto" className="my-8" />
-        ) : (
-          <div className="my-8 p-4 text-center bg-muted text-muted-foreground rounded-md">
-              <p>Ad placeholder: Configure your AdSense Publisher ID and Ad Slot ID in <code>src/app/posts/[slug]/page.tsx</code> and <code>src/app/layout.tsx</code> to display ads here.</p>
-          </div>
-        )}
+        
+        {/* 
+          Ad placeholder removed. 
+          Use the "Code Snippets" manager (e.g., with 'afterPostContent' or 'beforePostContent' locations)
+          to insert ad codes from any network (Adsterra, MGID, etc.) here.
+        */}
         
         {post.tags && post.tags.length > 0 && (
           <div className="mt-10 pt-6 border-t border-border">

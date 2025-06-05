@@ -1,7 +1,7 @@
 
 import type { Metadata } from 'next';
 import { Playfair_Display, PT_Sans } from 'next/font/google';
-import Script from 'next/script';
+// Script component is no longer needed here for AdSense specifically
 import './globals.css';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
@@ -51,12 +51,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_PUBLISHER_ID"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
+        {/* 
+          Global ad network scripts (like AdSense, Adsterra, MGID base scripts) 
+          should now be added via the Admin Panel: 
+          Admin > Settings > Ad Settings > Code Snippets > Add Snippet (Location: Global Header)
+        */}
         {/* Active globalHeader snippets are injected client-side by HeadInjectorClient */}
       </head>
       <body
