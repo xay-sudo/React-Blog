@@ -1,6 +1,7 @@
 
 import type { Post, User, CreatePostData, UpdatePostData } from '@/types';
 import { users, getCurrentUser, isAdmin as checkIsAdmin } from './users';
+import { revalidatePath } from 'next/cache';
 
 export let mockPosts: Post[] = [
   {
@@ -108,6 +109,11 @@ export const addPost = (postData: CreatePostData): Post => {
     tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : postData.tags,
   };
   mockPosts.unshift(newPost);
+
+  revalidatePath('/'); // Revalidate home page
+  revalidatePath(`/posts/${newPost.slug}`); // Revalidate the new post's page
+  revalidatePath('/admin/posts'); // Revalidate admin posts list
+
   return newPost;
 };
 
@@ -123,6 +129,8 @@ export const updatePost = (slug: string, postData: UpdatePostData): Post | undef
   }
 
   const existingPost = mockPosts[postIndex];
+  const oldSlug = existingPost.slug; // Keep old slug for revalidation if it changes
+
   let newSlug = existingPost.slug;
   if (postData.title && postData.title !== existingPost.title) {
     newSlug = slugify(postData.title);
@@ -147,6 +155,14 @@ export const updatePost = (slug: string, postData: UpdatePostData): Post | undef
   };
 
   mockPosts[postIndex] = updatedPost;
+
+  revalidatePath('/'); // Revalidate home page
+  if (oldSlug !== updatedPost.slug) {
+    revalidatePath(`/posts/${oldSlug}`); // Revalidate old slug path if changed
+  }
+  revalidatePath(`/posts/${updatedPost.slug}`); // Revalidate new/current slug path
+  revalidatePath('/admin/posts'); // Revalidate admin posts list
+  
   return updatedPost;
 };
 
@@ -157,5 +173,12 @@ export const deletePost = (slug: string): boolean => {
   }
   const initialLength = mockPosts.length;
   mockPosts = mockPosts.filter(p => p.slug !== slug);
-  return mockPosts.length < initialLength;
+  
+  if (mockPosts.length < initialLength) {
+    revalidatePath('/'); // Revalidate home page
+    revalidatePath(`/posts/${slug}`); // Revalidate the deleted post's page (will likely 404, but good to clear)
+    revalidatePath('/admin/posts'); // Revalidate admin posts list
+    return true;
+  }
+  return false;
 };
