@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { updateSiteSettings, type SiteSettings } from '@/data/siteSettings';
-import type { CodeSnippet } from '@/types'; 
+import type { CodeSnippet } from '@/types';
 
 // Schema for a single code snippet
 const CodeSnippetSchema = z.object({
@@ -11,7 +11,7 @@ const CodeSnippetSchema = z.object({
   name: z.string().min(1, { message: "Snippet name cannot be empty." }),
   code: z.string().min(1, { message: "Snippet code cannot be empty." }),
   location: z.enum([
-    'globalHeader', 
+    'globalHeader',
     'globalFooter',
     'postHeader',
     'postFooter',
@@ -32,20 +32,22 @@ const AdSettingsActionInputSchema = z.object({
 // Type for the input values the action expects.
 export type AdSettingsActionInput = z.infer<typeof AdSettingsActionInputSchema>;
 
-export async function saveAdSettingsAction(values: AdSettingsActionInput): Promise<void> {
+export async function saveAdSettingsAction(values: AdSettingsActionInput): Promise<SiteSettings> {
   try {
     const validatedValues = AdSettingsActionInputSchema.parse(values);
 
-    updateSiteSettings({
+    const updatedSettings = updateSiteSettings({
       adsTxtContent: validatedValues.adsTxtContent,
-      snippets: validatedValues.snippets as CodeSnippet[], 
+      snippets: validatedValues.snippets as CodeSnippet[],
     });
+    return updatedSettings; // Return the updated settings
 
   } catch (error) {
     console.error("Failed to update ad settings in server action:", error);
     if (error instanceof z.ZodError) {
       throw new Error(`Invalid data: ${error.errors.map(e => `${e.path.join('.')} - ${e.message}`).join(', ')}`);
     }
+    // Rethrow so the client can catch it.
     throw new Error("Server failed to update ad settings. Please try again.");
   }
 }

@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import React, { useEffect } from "react"; // Import React for useState
+import React from "react"; // Removed useEffect as it's no longer needed for form refresh here
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { getSiteSettings } from "@/data/siteSettings";
+import { getSiteSettings, type SiteSettings } from "@/data/siteSettings"; // SiteSettings type might be useful
 import { saveAdSettingsAction } from './actions';
 import type { AdSettingsActionInput } from './actions';
 import type { SnippetLocation } from '@/types';
@@ -34,7 +34,7 @@ const codeSnippetSchema = z.object({
   name: z.string().min(1, "Snippet name is required."),
   code: z.string().min(1, "Snippet code is required."),
   location: z.enum([
-    'globalHeader', 
+    'globalHeader',
     'globalFooter',
     'postHeader',
     'postFooter',
@@ -56,9 +56,8 @@ type AdSettingsFormValues = z.infer<typeof formSchema>;
 export default function AdSettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [formRefreshKey, setFormRefreshKey] = React.useState(0); // Key to trigger form reset
 
-  // Fetch initial settings once
+  // Fetch initial settings once for initial form population
   const initialSettings = React.useMemo(() => getSiteSettings(), []);
 
   const form = useForm<AdSettingsFormValues>({
@@ -74,26 +73,24 @@ export default function AdSettingsPage() {
     name: "snippets",
   });
 
-  useEffect(() => {
-    // This effect runs when formRefreshKey changes, ensuring form resets with latest data
-    const freshSettings = getSiteSettings(); 
-    form.reset({
-        adsTxtContent: freshSettings.adsTxtContent || "",
-        snippets: freshSettings.snippets || [],
-    });
-  }, [form, formRefreshKey]); // Depend on formRefreshKey
+  // The useEffect previously here for formRefreshKey is removed.
+  // Form reset will now be handled in handleSubmit using data returned by the server action.
 
   const {formState: {isSubmitting, errors}} = form;
 
   const handleSubmit = async (values: AdSettingsFormValues) => {
     try {
-      await saveAdSettingsAction(values as AdSettingsActionInput);
+      const updatedSettings: SiteSettings = await saveAdSettingsAction(values as AdSettingsActionInput);
       toast({
         title: "Ad Settings Updated",
         description: "Your advertising configurations have been saved.",
       });
-      router.refresh(); 
-      setFormRefreshKey(prevKey => prevKey + 1); // Increment key to trigger useEffect
+      // Reset the form with the data returned directly from the server action
+      form.reset({
+        adsTxtContent: updatedSettings.adsTxtContent || "",
+        snippets: updatedSettings.snippets || [],
+      });
+      router.refresh(); // Still useful to refresh other server components or global state if any
     } catch (error) {
       toast({
         title: "Error Updating Settings",
@@ -105,7 +102,7 @@ export default function AdSettingsPage() {
 
   const addNewSnippet = () => {
     append({
-      id: `new-${Math.random().toString(36).substr(2, 9)}`, 
+      id: `new-${Math.random().toString(36).substr(2, 9)}`,
       name: "",
       code: "",
       location: "globalHeader" as SnippetLocation,
@@ -118,7 +115,7 @@ export default function AdSettingsPage() {
         <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary">
             Advertising Settings
         </h1>
-        
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
             <Card className="shadow-xl">
@@ -240,7 +237,7 @@ export default function AdSettingsPage() {
                     {fields.length === 0 && <p className="text-muted-foreground text-center py-4">No snippets added yet. Click "Add Snippet" to create one.</p>}
                 </CardContent>
             </Card>
-            
+
             <div className="flex justify-end space-x-3 pt-4 sticky bottom-0 bg-background py-4 border-t border-border -mx-8 px-8">
               <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 text-primary-foreground px-6">
                 {isSubmitting ? "Saving Settings..." : "Save All Settings"}
