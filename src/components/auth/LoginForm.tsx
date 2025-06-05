@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn } from "lucide-react";
+import { users, MOCK_ADMIN_USER_ID } from "@/data/users"; // Import user data
 
 const formSchema = z.object({
   identifier: z.string().min(3, {
@@ -41,33 +42,35 @@ export default function LoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Simulate API call
     console.log("Login submitted:", values);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    toast({
-      title: "Login Attempt",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(values, null, 2)}</code>
-        </pre>
-      ),
-    });
-    // Here you would typically make an API call to your backend for authentication
-    // For now, we'll just log the values and show a toast.
-    // Example:
-    // try {
-    //   // const response = await fetch('/api/auth/login', { method: 'POST', body: JSON.stringify(values) });
-    //   // if (response.ok) {
-    //   // Handle successful login (e.g., redirect, store token)
-    //   // toast({ title: "Login Successful", description: "Welcome back!"});
-    //   // } else {
-    //   // Handle login error
-    //   // toast({ title: "Login Failed", description: "Invalid credentials.", variant: "destructive" });
-    //   // }
-    // } catch (error) {
-    //   // toast({ title: "Error", description: "An unexpected error occurred.", variant: "destructive" });
-    // }
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+
+    const adminUser = users.find(user => user.id === MOCK_ADMIN_USER_ID);
+    let loginSuccess = false;
+
+    if (adminUser) {
+      if (values.identifier.toLowerCase() === adminUser.email.toLowerCase() || values.identifier.toLowerCase() === adminUser.name.toLowerCase()) {
+        // In a real app, you would also validate the password here against a hash.
+        // For this mock, we'll assume password "Dell123" is correct if identifier matches.
+        // if (values.password === "Dell123") { // Optional: mock password check
+        loginSuccess = true;
+        // }
+      }
+    }
+
+    if (loginSuccess) {
+      toast({
+        title: "Login Successful (Mock)",
+        description: `Welcome, ${adminUser?.name || 'Admin'}!`,
+      });
+      // Here you might redirect the user, e.g., router.push('/admin');
+    } else {
+      toast({
+        title: "Login Failed (Mock)",
+        description: "User not recognized or invalid credentials for mock admin.",
+        variant: "destructive",
+      });
+    }
   }
 
   return (
