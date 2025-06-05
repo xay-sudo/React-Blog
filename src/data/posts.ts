@@ -68,7 +68,7 @@ const initialMockPostsData: Post[] = [
       <img src="https://placehold.co/800x400.png" alt="Placeholder for mountain landscape" data-ai-hint="mountain landscape" class="my-4 rounded-md shadow-md" />
       <p>Whether you're an avid hiker or just someone looking for a peaceful escape, the mountains have something to offer everyone. The tranquility and raw beauty of these majestic giants can rejuvenate your soul.</p>
     `,
-    author: bobAuthorUser, // Use the pre-resolved bobAuthorUser
+    author: bobAuthorUser, 
     createdAt: new Date('2024-02-10T14:30:00Z').toISOString(),
     updatedAt: new Date('2024-02-11T09:00:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -96,7 +96,8 @@ if (process.env.NODE_ENV === 'production') {
 
 
 export async function getAllPosts(page: number = 1, limit: number = 6): Promise<{ posts: Post[], totalPages: number, currentPage: number }> {
-  const sortedPosts = [...global.__mockPostsStore!].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const store = global.__mockPostsStore!;
+  const sortedPosts = [...store].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
   const paginatedPosts = sortedPosts.slice(startIndex, endIndex);
@@ -105,11 +106,13 @@ export async function getAllPosts(page: number = 1, limit: number = 6): Promise<
 };
 
 export async function getAllPostsForAdmin(): Promise<Post[]> {
-  return [...global.__mockPostsStore!].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const store = global.__mockPostsStore!;
+  return [...store].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
 export async function getPostBySlug(slug: string): Promise<Post | undefined> {
-  return global.__mockPostsStore!.find(post => post.slug === slug);
+  const store = global.__mockPostsStore!;
+  return store.find(post => post.slug === slug);
 };
 
 export async function addPost(postData: CreatePostData): Promise<Post> {
@@ -128,7 +131,7 @@ export async function addPost(postData: CreatePostData): Promise<Post> {
   let maxId = 0;
   if (currentPosts.length > 0) {
     const ids = currentPosts.map(p => parseInt(p.id, 10));
-    const validIds = ids.filter(id => !isNaN(id)); // Filter out NaN values
+    const validIds = ids.filter(id => !isNaN(id)); 
     if (validIds.length > 0) {
       maxId = Math.max(...validIds);
     }
@@ -166,13 +169,14 @@ export async function updatePost(slug: string, postData: UpdatePostData): Promis
   if (!currentUser || !checkIsAdmin(currentUser.id)) {
     throw new Error("Unauthorized: Only admins can update posts.");
   }
-
-  const postIndex = global.__mockPostsStore!.findIndex(p => p.slug === slug);
+  
+  const store = global.__mockPostsStore!;
+  const postIndex = store.findIndex(p => p.slug === slug);
   if (postIndex === -1) {
     return undefined;
   }
 
-  const existingPost = global.__mockPostsStore![postIndex];
+  const existingPost = store[postIndex];
   const oldSlug = existingPost.slug;
 
   let newSlug = existingPost.slug;
@@ -180,7 +184,7 @@ export async function updatePost(slug: string, postData: UpdatePostData): Promis
     newSlug = slugify(postData.title);
     let finalSlug = newSlug;
     let counter = 1;
-    while (global.__mockPostsStore!.some(p => p.slug === finalSlug && p.id !== existingPost.id)) {
+    while (store.some(p => p.slug === finalSlug && p.id !== existingPost.id)) {
         finalSlug = `${newSlug}-${counter}`;
         counter++;
     }
@@ -195,7 +199,6 @@ export async function updatePost(slug: string, postData: UpdatePostData): Promis
      throw new Error(`Post author could not be determined for update. This is an unexpected error.`);
   }
 
-
   const updatedPost: Post = {
     ...existingPost,
     ...postData,
@@ -205,7 +208,7 @@ export async function updatePost(slug: string, postData: UpdatePostData): Promis
     tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : (postData.tags || existingPost.tags),
   };
 
-  global.__mockPostsStore![postIndex] = updatedPost;
+  store[postIndex] = updatedPost;
 
   revalidatePath('/');
   if (oldSlug !== updatedPost.slug) {
@@ -222,8 +225,10 @@ export async function deletePost(slug: string): Promise<boolean> {
   if (!currentUser || !checkIsAdmin(currentUser.id)) {
     throw new Error("Unauthorized: Only admins can delete posts.");
   }
-  const initialLength = global.__mockPostsStore!.length;
-  global.__mockPostsStore = global.__mockPostsStore!.filter(p => p.slug !== slug);
+  
+  const store = global.__mockPostsStore!;
+  const initialLength = store.length;
+  global.__mockPostsStore = store.filter(p => p.slug !== slug); // Reassign to the global
   
   if (global.__mockPostsStore!.length < initialLength) {
     revalidatePath('/');
@@ -233,3 +238,5 @@ export async function deletePost(slug: string): Promise<boolean> {
   }
   return false;
 };
+
+    
