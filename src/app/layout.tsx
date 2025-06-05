@@ -49,10 +49,23 @@ export default function RootLayout({
           strategy="afterInteractive"
         />
 
-        {/* Injected Header Scripts */}
-        {siteSettings.headerScripts && (
-          <div dangerouslySetInnerHTML={{ __html: siteSettings.headerScripts }} />
-        )}
+        {/* 
+          Injected Header Scripts:
+          The previous method using <div dangerouslySetInnerHTML={{ __html: siteSettings.headerScripts }} />
+          was invalid as <div> cannot be a child of <head>. This caused hydration errors.
+          The problematic line has been removed to fix the error.
+          
+          To correctly inject header scripts/tags from a string (siteSettings.headerScripts), 
+          a more sophisticated approach is needed. For example, parsing the string into
+          valid React elements (<script>, <meta>, etc.) or managing header items as structured data.
+          The `footerScripts` are injected using a similar method, but a <div> just before </body> is valid HTML.
+        */}
+        {/* {siteSettings.headerScripts && (
+          // The following line caused the error and has been removed.
+          // <div dangerouslySetInnerHTML={{ __html: siteSettings.headerScripts }} />
+          // TODO: Implement a safe and valid way to inject headerScripts if this functionality is required.
+          // For now, to prevent the error, this specific injection is disabled.
+        )} */}
       </head>
       <body
         className={cn(
@@ -70,7 +83,7 @@ export default function RootLayout({
         </div>
         <Toaster />
         
-        {/* Injected Footer Scripts */}
+        {/* Injected Footer Scripts: A div wrapper here is valid HTML. */}
         {siteSettings.footerScripts && (
           <div dangerouslySetInnerHTML={{ __html: siteSettings.footerScripts }} />
         )}

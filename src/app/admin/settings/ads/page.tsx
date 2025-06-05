@@ -19,8 +19,9 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { getSiteSettings, updateSiteSettings, type SiteSettings } from "@/data/siteSettings";
+import { getSiteSettings } from "@/data/siteSettings";
 import { useEffect } from "react";
+import { saveAdSettingsAction, type AdSettingsActionInput } from './actions';
 
 const formSchema = z.object({
   adsTxtContent: z.string().min(10, {
@@ -32,27 +33,10 @@ const formSchema = z.object({
 
 type AdSettingsFormValues = z.infer<typeof formSchema>;
 
-// Server action to update settings
-async function saveAdSettings(values: AdSettingsFormValues) {
-  "use server";
-  try {
-    updateSiteSettings(values);
-    // Revalidate ads.txt path or any path affected by header/footer scripts
-    // For simplicity, we are not doing specific revalidation here as data is in-memory
-    // In a real app with a DB: revalidatePath('/ads.txt'), revalidatePath('/')
-  } catch (error) {
-    console.error("Failed to update ad settings:", error);
-    throw new Error("Server failed to update ad settings.");
-  }
-}
-
-
 export default function AdSettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Fetch initial data on the client for this form.
-  // In a real app, if this were a server component, you might pass initialData as a prop.
   const currentSettings = getSiteSettings();
 
   const form = useForm<AdSettingsFormValues>({
@@ -65,8 +49,6 @@ export default function AdSettingsPage() {
   });
   
   useEffect(() => {
-    // Reset form if currentSettings change (e.g. after save and re-fetch)
-    // This is more relevant if getSiteSettings was async or could change post-mount
     form.reset({
         adsTxtContent: currentSettings.adsTxtContent || "",
         headerScripts: currentSettings.headerScripts || "",
@@ -79,13 +61,12 @@ export default function AdSettingsPage() {
 
   const handleSubmit = async (values: AdSettingsFormValues) => {
     try {
-      await saveAdSettings(values);
+      await saveAdSettingsAction(values as AdSettingsActionInput);
       toast({
         title: "Ad Settings Updated",
         description: "Your advertising configurations have been saved.",
       });
-      // No router.push needed as we are on the same page
-      router.refresh(); // Refresh to reflect server-side changes if any, though data is client-side here for form
+      router.refresh(); 
     } catch (error) {
       toast({
         title: "Error Updating Settings",
