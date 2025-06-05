@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import AdsenseAd from '@/components/ads/AdsenseAd'; // Import the Ad component
 
 interface PostPageProps {
   params: {
@@ -34,6 +35,11 @@ export default function PostPage({ params }: PostPageProps) {
     month: 'long',
     day: 'numeric',
   });
+
+  // IMPORTANT: Replace with your actual AdSense Publisher ID (should be same as in layout)
+  const adClient = "ca-pub-YOUR_ADSENSE_PUBLISHER_ID"; 
+  // IMPORTANT: Replace with an actual Ad Slot ID for your post pages
+  const postPageAdSlot = "YOUR_ADSENSE_AD_SLOT_ID_POSTPAGE";
 
   return (
     <article className="max-w-3xl mx-auto bg-card p-6 sm:p-8 rounded-lg shadow-xl">
@@ -84,6 +90,15 @@ export default function PostPage({ params }: PostPageProps) {
         className="prose prose-lg max-w-none dark:prose-invert prose-headings:font-headline prose-headings:text-primary prose-p:font-body prose-a:text-accent hover:prose-a:text-accent/80 prose-img:rounded-md prose-img:shadow-md"
         dangerouslySetInnerHTML={{ __html: post.content }}
       />
+
+      {/* Example Ad Placement on Post Page */}
+      {adClient && adClient !== "ca-pub-YOUR_ADSENSE_PUBLISHER_ID" && postPageAdSlot && postPageAdSlot !== "YOUR_ADSENSE_AD_SLOT_ID_POSTPAGE" ? (
+        <AdsenseAd adClient={adClient} adSlot={postPageAdSlot} adFormat="auto" className="my-8" />
+      ) : (
+        <div className="my-8 p-4 text-center bg-muted text-muted-foreground rounded-md">
+            <p>Ad placeholder: Configure your AdSense Publisher ID and Ad Slot ID in <code>src/app/posts/[slug]/page.tsx</code> and <code>src/app/layout.tsx</code> to display ads here.</p>
+        </div>
+      )}
       
       {post.tags && post.tags.length > 0 && (
         <div className="mt-10 pt-6 border-t border-border">
