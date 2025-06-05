@@ -1,6 +1,7 @@
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { BookOpenText, LogIn, UserPlus } from 'lucide-react';
+import { BookOpenText, LogIn, UserPlus, ShieldCheck } from 'lucide-react';
 
 export default function Navbar() {
   return (
@@ -14,6 +15,12 @@ export default function Navbar() {
             <Link href="/">
               <BookOpenText className="mr-0 sm:mr-2 h-5 w-5" />
               <span className="hidden sm:inline">Posts</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" asChild className="text-foreground hover:bg-accent/10 hover:text-accent transition-colors">
+            <Link href="/admin">
+              <ShieldCheck className="mr-0 sm:mr-2 h-5 w-5" />
+              <span className="hidden sm:inline">Admin</span>
             </Link>
           </Button>
           <Button variant="ghost" asChild className="text-foreground hover:bg-accent/10 hover:text-accent transition-colors">

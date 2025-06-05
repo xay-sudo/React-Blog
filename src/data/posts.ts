@@ -1,3 +1,4 @@
+
 import type { Post, User } from '@/types';
 
 const users: User[] = [
@@ -6,7 +7,7 @@ const users: User[] = [
   { id: '3', name: 'Charlie Chaplin', email: 'charlie@example.com' },
 ];
 
-export const mockPosts: Post[] = [
+export let mockPosts: Post[] = [
   {
     id: '1',
     slug: 'first-amazing-post',
@@ -145,16 +146,105 @@ async function fetchData(url) {
   }
 ];
 
+// Helper function to generate slugs
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-') // Replace spaces with -
+    .replace(/[^\w-]+/g, '') // Remove all non-word chars
+    .replace(/--+/g, '-'); // Replace multiple - with single -
+}
+
+// Function to get all posts (simulates API call with pagination for public pages)
+export const getAllPosts = (page: number = 1, limit: number = 6): { posts: Post[], totalPages: number, currentPage: number } => {
+  const sortedPosts = [...mockPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+  const paginatedPosts = sortedPosts.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(sortedPosts.length / limit);
+  return { posts: paginatedPosts, totalPages, currentPage: page };
+};
+
+// Function to get all posts for admin (no pagination, for simplicity in admin table)
+export const getAllPostsForAdmin = (): Post[] => {
+  return [...mockPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+};
+
 // Function to get a post by slug (simulates API call)
 export const getPostBySlug = (slug: string): Post | undefined => {
   return mockPosts.find(post => post.slug === slug);
 };
 
-// Function to get all posts (simulates API call with pagination)
-export const getAllPosts = (page: number = 1, limit: number = 3): { posts: Post[], totalPages: number, currentPage: number } => {
-  const startIndex = (page - 1) * limit;
-  const endIndex = page * limit;
-  const paginatedPosts = mockPosts.slice(startIndex, endIndex);
-  const totalPages = Math.ceil(mockPosts.length / limit);
-  return { posts: paginatedPosts, totalPages, currentPage: page };
+// Function to add a new post
+export type CreatePostData = Omit<Post, 'id' | 'slug' | 'author' | 'createdAt' | 'updatedAt'> & { authorId?: string };
+export const addPost = (postData: CreatePostData): Post => {
+  const newId = (Math.max(...mockPosts.map(p => parseInt(p.id, 10)), 0) + 1).toString();
+  const slug = slugify(postData.title);
+  // Ensure slug is unique
+  let finalSlug = slug;
+  let counter = 1;
+  while (mockPosts.some(p => p.slug === finalSlug)) {
+    finalSlug = `${slug}-${counter}`;
+    counter++;
+  }
+
+  const author = users.find(u => u.id === postData.authorId) || users[0]; // Default to first user if not found
+
+  const newPost: Post = {
+    ...postData,
+    id: newId,
+    slug: finalSlug,
+    author,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : postData.tags,
+  };
+  mockPosts.unshift(newPost); // Add to the beginning of the array
+  return newPost;
+};
+
+// Function to update an existing post
+export type UpdatePostData = Partial<Omit<Post, 'id' | 'slug' | 'author' | 'createdAt' | 'updatedAt'>> & { authorId?: string };
+export const updatePost = (slug: string, postData: UpdatePostData): Post | undefined => {
+  const postIndex = mockPosts.findIndex(p => p.slug === slug);
+  if (postIndex === -1) {
+    return undefined;
+  }
+
+  const existingPost = mockPosts[postIndex];
+  let newSlug = existingPost.slug;
+  if (postData.title && postData.title !== existingPost.title) {
+    newSlug = slugify(postData.title);
+    // Ensure slug is unique if changed
+    let finalSlug = newSlug;
+    let counter = 1;
+    while (mockPosts.some(p => p.slug === finalSlug && p.id !== existingPost.id)) {
+        finalSlug = `${newSlug}-${counter}`;
+        counter++;
+    }
+    newSlug = finalSlug;
+  }
+  
+  const author = postData.authorId ? users.find(u => u.id === postData.authorId) || existingPost.author : existingPost.author;
+
+  const updatedPost: Post = {
+    ...existingPost,
+    ...postData,
+    slug: newSlug,
+    author,
+    updatedAt: new Date().toISOString(),
+    tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : postData.tags || existingPost.tags,
+  };
+
+  mockPosts[postIndex] = updatedPost;
+  return updatedPost;
+};
+
+// Function to delete a post
+export const deletePost = (slug: string): boolean => {
+  const initialLength = mockPosts.length;
+  mockPosts = mockPosts.filter(p => p.slug !== slug);
+  return mockPosts.length < initialLength;
 };
