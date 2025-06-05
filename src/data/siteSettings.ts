@@ -1,8 +1,9 @@
 
 import type { SiteSettings, CodeSnippet } from '@/types';
 
-// Initial default settings
-let settings: SiteSettings = {
+// This object now primarily serves as the *default* settings structure
+// if localStorage is empty on the client, and as the server's in-memory store.
+const defaultSettings: SiteSettings = {
   adsTxtContent: `google.com, pub-YOUR_ADSENSE_PUBLISHER_ID, DIRECT, f08c47fec0942fa0\n# Add other ad network entries here (e.g., for Adsterra, MGID, etc.)`,
   snippets: [
     {
@@ -48,28 +49,31 @@ let settings: SiteSettings = {
   ],
 };
 
+// Server's in-memory store
+let serverInMemorySettings: SiteSettings = JSON.parse(JSON.stringify(defaultSettings));
+
+// This function now returns the server's in-memory settings.
+// For client-side, the AdSettingsPage will manage its own state from localStorage,
+// using these defaults if localStorage is initially empty.
 export const getSiteSettings = (): SiteSettings => {
-  // In a real app, you'd fetch this from a database
-  // Return a deep copy to prevent direct mutation of the settings object from outside
-  return JSON.parse(JSON.stringify(settings));
+  return JSON.parse(JSON.stringify(serverInMemorySettings));
 };
 
+// This function updates the server's in-memory settings.
+// This is called by the server action.
 export const updateSiteSettings = (newSettings: Partial<SiteSettings>): SiteSettings => {
-  // In a real app, you'd save this to a database
-
   if (newSettings.adsTxtContent !== undefined) {
-    settings.adsTxtContent = newSettings.adsTxtContent;
+    serverInMemorySettings.adsTxtContent = newSettings.adsTxtContent;
   }
   if (newSettings.snippets) {
-    // Assign the new array of snippets. The Zod schema on the action input ensures isActive is a boolean.
-    settings.snippets = newSettings.snippets.map(snippet => ({
+    serverInMemorySettings.snippets = newSettings.snippets.map(snippet => ({
         ...snippet,
-        // isActive is guaranteed to be a boolean by Zod validation in the action
     })) as CodeSnippet[];
   }
-  
-  // console.log("Site settings updated in mock data (src/data/siteSettings.ts):", JSON.parse(JSON.stringify(settings)));
-  // Return a deep copy of the updated settings
-  return JSON.parse(JSON.stringify(settings));
+  return JSON.parse(JSON.stringify(serverInMemorySettings));
 };
 
+// Helper to get default settings, used by client if localStorage is empty.
+export const getDefaultSiteSettings = (): SiteSettings => {
+    return JSON.parse(JSON.stringify(defaultSettings));
+}

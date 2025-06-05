@@ -2,10 +2,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useEffect } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,11 +23,14 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { getSiteSettings, type SiteSettings } from "@/data/siteSettings";
+import { getDefaultSiteSettings, type SiteSettings } from "@/data/siteSettings"; // Get default for initialization
 import { saveAdSettingsAction } from './actions';
 import type { AdSettingsActionInput } from './actions';
-import type { SnippetLocation } from '@/types';
+import type { SnippetLocation, CodeSnippet } from '@/types';
 import { Trash2, PlusCircle } from "lucide-react";
+import { useLocalStorage } from '@/hooks/use-local-storage';
+
+const SITE_SETTINGS_LOCAL_STORAGE_KEY = 'bloggerVerseAdminAdSettings';
 
 const codeSnippetSchema = z.object({
   id: z.string(),
@@ -57,36 +60,57 @@ export default function AdSettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const initialSettings = React.useMemo(() => getSiteSettings(), []);
+  // Use localStorage for the primary state of this form
+  const [localSettings, setLocalSettings] = useLocalStorage<AdSettingsFormValues>(
+    SITE_SETTINGS_LOCAL_STORAGE_KEY,
+    () => {
+        const defaults = getDefaultSiteSettings();
+        return {
+            adsTxtContent: defaults.adsTxtContent || "",
+            snippets: defaults.snippets || [],
+        };
+    }
+  );
 
   const form = useForm<AdSettingsFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      adsTxtContent: initialSettings.adsTxtContent || "",
-      snippets: initialSettings.snippets || [],
-    },
+    // Default values will be set by useEffect below to ensure localStorage is primary
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, replace } = useFieldArray({
     control: form.control,
     name: "snippets",
   });
+
+  // Sync form with localStorage state on mount and when localSettings change
+  useEffect(() => {
+    form.reset(localSettings);
+    // Ensure field array is also synced if `replace` is available and snippets differ
+    // For more complex scenarios, you might need a deep compare or specific handling
+    // For now, form.reset should handle snippets if localSettings are structured correctly.
+    // If `useFieldArray` doesn't update correctly with just `form.reset`, we might need `replace(localSettings.snippets)`
+  }, [localSettings, form]);
+
 
   const {formState: {isSubmitting, errors}} = form;
 
   const handleSubmit = async (values: AdSettingsFormValues) => {
     try {
-      const updatedSettings: SiteSettings = await saveAdSettingsAction(values as AdSettingsActionInput);
+      // 1. Update server's in-memory store (for ads.txt, etc.)
+      // The server action is still useful for any server-side logic or if ads.txt needs live updates from server memory
+      await saveAdSettingsAction(values as AdSettingsActionInput); 
+      
+      // 2. Update localStorage with the new values
+      setLocalSettings(values);
+
       toast({
         title: "Ad Settings Updated",
-        description: "Your advertising configurations have been saved.",
+        description: "Your advertising configurations have been saved to your browser and server.",
       });
-      // Reset the form with the data returned directly from the server action
-      form.reset({
-        adsTxtContent: updatedSettings.adsTxtContent || "",
-        snippets: updatedSettings.snippets || [],
-      });
-      router.refresh(); 
+      // Form is already reset via useEffect reacting to localSettings change,
+      // or can be explicitly reset here if preferred:
+      // form.reset(values); 
+      router.refresh(); // Potentially re-fetch server data if other parts of admin depend on it
     } catch (error) {
       toast({
         title: "Error Updating Settings",
@@ -98,10 +122,10 @@ export default function AdSettingsPage() {
 
   const addNewSnippet = () => {
     append({
-      id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, // More robust unique ID
+      id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       name: "",
       code: "",
-      location: "globalHeader" as SnippetLocation,
+      location: "globalHeader" as SnippetLocation, // Default, will be picked up by Controller
       isActive: true,
     });
   };
@@ -111,6 +135,9 @@ export default function AdSettingsPage() {
         <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary">
             Advertising Settings
         </h1>
+        <p className="text-muted-foreground">
+            Settings are saved in your browser&apos;s local storage and also sent to the server for features like <code>ads.txt</code>.
+        </p>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
@@ -118,7 +145,7 @@ export default function AdSettingsPage() {
               <CardHeader>
                   <CardTitle className="font-headline text-2xl">ads.txt Content</CardTitle>
                   <CardDescription>
-                      Manage the content of your <code>ads.txt</code> file. This will be served at <code>/ads.txt</code>.
+                      Manage the content of your <code>ads.txt</code> file. This will be served at <code>/ads.txt</code> based on server data.
                   </CardDescription>
               </CardHeader>
               <CardContent>
@@ -158,13 +185,13 @@ export default function AdSettingsPage() {
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {fields.map((field, index) => (
-                        <Card key={field.id} className="p-4 border shadow-md bg-card/50">
+                    {fields.map((item, index) => ( // `item` instead of `field` to avoid conflict
+                        <Card key={item.id} className="p-4 border shadow-md bg-card/50">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <FormField
                                     control={form.control}
                                     name={`snippets.${index}.name`}
-                                    render={({ field: f }) => (
+                                    render={({ field: f }) => ( // `f` for inner field
                                         <FormItem>
                                             <FormLabel>Snippet Name</FormLabel>
                                             <FormControl><Input placeholder="e.g., Google Analytics" {...f} /></FormControl>
@@ -175,10 +202,10 @@ export default function AdSettingsPage() {
                                 <FormField
                                     control={form.control}
                                     name={`snippets.${index}.location`}
-                                    render={({ field: f }) => (
+                                    render={({ field: f }) => ( // `f` for inner field
                                         <FormItem>
                                             <FormLabel>Location</FormLabel>
-                                            <Select onValueChange={f.onChange} defaultValue={f.value as SnippetLocation}>
+                                            <Select onValueChange={f.onChange} value={f.value as SnippetLocation} defaultValue={f.value as SnippetLocation}>
                                                 <FormControl>
                                                     <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
                                                 </FormControl>
@@ -199,7 +226,7 @@ export default function AdSettingsPage() {
                              <FormField
                                 control={form.control}
                                 name={`snippets.${index}.code`}
-                                render={({ field: f }) => (
+                                render={({ field: f }) => ( // `f` for inner field
                                     <FormItem className="mb-4">
                                         <FormLabel>Code</FormLabel>
                                         <FormControl><Textarea placeholder="<script>...</script> or <style>...</style>" {...f} rows={6} className="font-mono text-sm" /></FormControl>
@@ -211,7 +238,7 @@ export default function AdSettingsPage() {
                                 <FormField
                                     control={form.control}
                                     name={`snippets.${index}.isActive`}
-                                    render={({ field: f }) => (
+                                    render={({ field: f }) => ( // `f` for inner field
                                         <FormItem className="flex flex-row items-center space-x-2">
                                             <FormControl><Switch checked={f.value} onCheckedChange={f.onChange} /></FormControl>
                                             <FormLabel className="cursor-pointer">Active</FormLabel>
@@ -243,4 +270,3 @@ export default function AdSettingsPage() {
     </div>
   );
 }
-
