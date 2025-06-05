@@ -15,43 +15,44 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { Post } from "@/types";
-import { deletePost as deletePostAction } from "@/data/posts"; // Renamed to avoid conflict
+import { deletePost as deletePostAction } from "@/data/posts"; 
 import { useToast } from "@/hooks/use-toast";
 import DeletePostDialog from "./DeletePostDialog";
 import { Edit, Eye } from "lucide-react";
 
 interface PostsDataTableProps {
   posts: Post[];
+  isAdminStatus: boolean;
 }
 
-export default function PostsDataTable({ posts }: PostsDataTableProps) {
+export default function PostsDataTable({ posts, isAdminStatus }: PostsDataTableProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDeletePost = async (slug: string, title: string) => {
+    if (!isAdminStatus) {
+      toast({
+        title: "Unauthorized",
+        description: "You do not have permission to delete posts.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsDeleting(true);
     try {
-      // This should be a server action or an API call in a real app
-      // For now, we'll call the mock data function directly
-      const success = deletePostAction(slug);
-      if (success) {
-        toast({
-          title: "Post Deleted",
-          description: `The post "${title}" has been successfully deleted.`,
-        });
-        router.refresh(); // Re-fetch posts on the server component
-      } else {
-        toast({
-          title: "Error Deleting Post",
-          description: "Could not find the post to delete.",
-          variant: "destructive",
-        });
-      }
+      // Server action (deletePostAction) already checks for admin internally
+      // but this client-side check is good for UX
+      deletePostAction(slug); // Will throw if not admin
+      toast({
+        title: "Post Deleted",
+        description: `The post "${title}" has been successfully deleted.`,
+      });
+      router.refresh(); // Re-fetch posts on the server component
     } catch (error) {
       toast({
-        title: "Error",
-        description: "An unexpected error occurred while deleting the post.",
+        title: "Error Deleting Post",
+        description: error instanceof Error ? error.message : "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
@@ -68,7 +69,7 @@ export default function PostsDataTable({ posts }: PostsDataTableProps) {
   };
 
   if (posts.length === 0) {
-    return <p className="text-muted-foreground text-center py-8">No posts found. Create your first post!</p>;
+    return <p className="text-muted-foreground text-center py-8">No posts found. {isAdminStatus ? "Create your first post!" : ""}</p>;
   }
 
   return (
@@ -104,16 +105,20 @@ export default function PostsDataTable({ posts }: PostsDataTableProps) {
                       <span className="sr-only">View Post</span>
                     </Link>
                   </Button>
-                  <Button variant="outline" size="icon" asChild  className="h-8 w-8">
-                    <Link href={`/admin/posts/${post.slug}/edit`}>
-                      <Edit className="h-4 w-4" />
-                      <span className="sr-only">Edit Post</span>
-                    </Link>
-                  </Button>
-                  <DeletePostDialog 
-                    onConfirm={() => handleDeletePost(post.slug, post.title)}
-                    isDeleting={isDeleting}
-                  />
+                  {isAdminStatus && (
+                    <>
+                      <Button variant="outline" size="icon" asChild  className="h-8 w-8">
+                        <Link href={`/admin/posts/${post.slug}/edit`}>
+                          <Edit className="h-4 w-4" />
+                          <span className="sr-only">Edit Post</span>
+                        </Link>
+                      </Button>
+                      <DeletePostDialog 
+                        onConfirm={() => handleDeletePost(post.slug, post.title)}
+                        isDeleting={isDeleting}
+                      />
+                    </>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

@@ -3,8 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { FileText, PlusCircle } from "lucide-react";
+import { getCurrentUser, isAdmin } from "@/data/users";
 
 export default function AdminDashboardPage() {
+  const currentUser = getCurrentUser();
+  const userIsAdmin = isAdmin(currentUser?.id);
+
   return (
     <div className="space-y-8">
       <h1 className="font-headline text-3xl md:text-4xl font-bold text-primary">
@@ -25,11 +29,13 @@ export default function AdminDashboardPage() {
                 <FileText className="mr-2 h-5 w-5" /> Manage Posts
               </Link>
             </Button>
-            <Button asChild variant="outline">
-              <Link href="/admin/posts/create">
-                <PlusCircle className="mr-2 h-5 w-5" /> Create New Post
-              </Link>
-            </Button>
+            {userIsAdmin && (
+              <Button asChild variant="outline">
+                <Link href="/admin/posts/create">
+                  <PlusCircle className="mr-2 h-5 w-5" /> Create New Post
+                </Link>
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

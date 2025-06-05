@@ -1,21 +1,37 @@
 
-// "use server" directive is not needed here if addPost is called from PostForm client component
-// We'll handle the action in PostForm directly for now.
-
 import PostForm, { type PostFormValues } from '@/components/admin/PostForm';
-import { addPost } from '@/data/posts'; // This will be called client-side via the form
+import { addPost } from '@/data/posts';
+import { getCurrentUser, isAdmin } from '@/data/users';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function CreatePostPage() {
+  const currentUser = getCurrentUser();
+  const userIsAdmin = isAdmin(currentUser?.id);
+
+  if (!userIsAdmin) {
+    return (
+      <Card className="shadow-xl w-full max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle className="font-headline text-2xl sm:text-3xl text-destructive">Access Denied</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">You do not have permission to create new posts.</p>
+        </CardContent>
+      </Card>
+    );
+  }
   
   async function handleCreatePost(values: PostFormValues) {
-    "use server"; // This server action will be called from the client component
+    "use server"; 
+    // The addPost function itself will re-check for admin status as a security measure.
     try {
-      // For simplicity, using first user as author. In a real app, this would be the logged-in user.
-      const authorId = "1"; 
-      addPost({ ...values, authorId });
+      // If authorId is not explicitly set, addPost will default to the current admin user.
+      const authorIdToSet = currentUser?.id; // Ensure we are using the current (admin) user
+      addPost({ ...values, authorId: authorIdToSet });
     } catch (error) {
       console.error("Failed to create post:", error);
-      throw new Error("Server failed to create post.");
+      // The error.message will contain "Unauthorized" if that's the cause from addPost
+      throw error; 
     }
   }
 

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import PostsDataTable from '@/components/admin/PostsDataTable';
 import { getAllPostsForAdmin } from '@/data/posts';
+import { getCurrentUser, isAdmin } from '@/data/users';
 import { PlusCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -11,6 +12,8 @@ export const dynamic = 'force-dynamic'; // Ensure fresh data on each request for
 
 export default function AdminPostsPage() {
   const posts = getAllPostsForAdmin();
+  const currentUser = getCurrentUser();
+  const userIsAdmin = isAdmin(currentUser?.id);
 
   return (
     <div className="space-y-8">
@@ -23,11 +26,13 @@ export default function AdminPostsPage() {
             View, create, edit, or delete blog posts.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/posts/create">
-            <PlusCircle className="mr-2 h-5 w-5" /> Create New Post
-          </Link>
-        </Button>
+        {userIsAdmin && (
+          <Button asChild>
+            <Link href="/admin/posts/create">
+              <PlusCircle className="mr-2 h-5 w-5" /> Create New Post
+            </Link>
+          </Button>
+        )}
       </div>
       
       <Card className="shadow-lg">
@@ -38,7 +43,7 @@ export default function AdminPostsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <PostsDataTable posts={posts} />
+          <PostsDataTable posts={posts} isAdminStatus={userIsAdmin} />
         </CardContent>
       </Card>
     </div>

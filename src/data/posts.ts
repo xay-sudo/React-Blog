@@ -1,11 +1,6 @@
 
-import type { Post, User } from '@/types';
-
-const users: User[] = [
-  { id: '1', name: 'Alice Wonderland', email: 'alice@example.com' },
-  { id: '2', name: 'Bob The Builder', email: 'bob@example.com' },
-  { id: '3', name: 'Charlie Chaplin', email: 'charlie@example.com' },
-];
+import type { Post, User, CreatePostData, UpdatePostData } from '@/types';
+import { users, getCurrentUser, isAdmin as checkIsAdmin } from './users'; // Updated import
 
 export let mockPosts: Post[] = [
   {
@@ -22,7 +17,7 @@ export let mockPosts: Post[] = [
       <p>Once you start publishing, remember to engage with your readers. Respond to comments, ask questions, and build a community around your blog. This interaction can be incredibly rewarding and can help your blog grow.</p>
       <p>Happy blogging!</p>
     `,
-    author: users[0],
+    author: users.find(u => u.id === '1')!, // Alice
     createdAt: new Date('2024-01-15T10:00:00Z').toISOString(),
     updatedAt: new Date('2024-01-16T12:30:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -47,7 +42,7 @@ export let mockPosts: Post[] = [
       <img src="https://placehold.co/800x400.png" alt="Placeholder for mountain landscape" data-ai-hint="mountain landscape" class="my-4 rounded-md shadow-md" />
       <p>Whether you're an avid hiker or just someone looking for a peaceful escape, the mountains have something to offer everyone. The tranquility and raw beauty of these majestic giants can rejuvenate your soul.</p>
     `,
-    author: users[1],
+    author: users.find(u => u.id === '2')!, // Bob
     createdAt: new Date('2024-02-10T14:30:00Z').toISOString(),
     updatedAt: new Date('2024-02-11T09:00:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -72,7 +67,7 @@ export let mockPosts: Post[] = [
       <img src="https://placehold.co/800x400.png" alt="Placeholder for minimalist interior" data-ai-hint="minimalist interior" class="my-4 rounded-md shadow-md" />
       <p>It's a journey, not a destination. Start small and gradually make changes. You might be surprised at how liberating it feels to live with less.</p>
     `,
-    author: users[0],
+    author: users.find(u => u.id === '1')!, // Alice
     createdAt: new Date('2024-03-05T09:15:00Z').toISOString(),
     updatedAt: new Date('2024-03-05T17:00:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -109,7 +104,7 @@ async function fetchData(url) {
       </code></pre>
       <p>Understanding and utilizing these features can greatly improve your code quality and productivity. Dive in and explore the world of modern JavaScript!</p>
     `,
-    author: users[2],
+    author: users.find(u => u.id === '3')!, // Charlie
     createdAt: new Date('2024-04-20T11:00:00Z').toISOString(),
     updatedAt: new Date('2024-04-21T15:45:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -136,7 +131,7 @@ async function fetchData(url) {
       <p>Preheat your oven and pizza stone (if using) to a high temperature. Stretch your dough gently. Don't overload with toppings. A sprinkle of fresh basil after baking adds a wonderful aroma.</p>
       <p>Experiment with different sauces, cheeses, and toppings to find your perfect combination. Enjoy your culinary creation!</p>
     `,
-    author: users[1],
+    author: users.find(u => u.id === '2')!, // Bob
     createdAt: new Date('2024-05-12T18:00:00Z').toISOString(),
     updatedAt: new Date('2024-05-12T20:10:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -177,9 +172,14 @@ export const getPostBySlug = (slug: string): Post | undefined => {
   return mockPosts.find(post => post.slug === slug);
 };
 
+
 // Function to add a new post
-export type CreatePostData = Omit<Post, 'id' | 'slug' | 'author' | 'createdAt' | 'updatedAt'> & { authorId?: string };
 export const addPost = (postData: CreatePostData): Post => {
+  const currentUser = getCurrentUser();
+  if (!currentUser || !checkIsAdmin(currentUser.id)) {
+    throw new Error("Unauthorized: Only admins can create posts.");
+  }
+
   const newId = (Math.max(...mockPosts.map(p => parseInt(p.id, 10)), 0) + 1).toString();
   const slug = slugify(postData.title);
   // Ensure slug is unique
@@ -190,7 +190,7 @@ export const addPost = (postData: CreatePostData): Post => {
     counter++;
   }
 
-  const author = users.find(u => u.id === postData.authorId) || users[0]; // Default to first user if not found
+  const author = users.find(u => u.id === postData.authorId) || currentUser; // Default to current admin user if authorId not provided
 
   const newPost: Post = {
     ...postData,
@@ -206,8 +206,12 @@ export const addPost = (postData: CreatePostData): Post => {
 };
 
 // Function to update an existing post
-export type UpdatePostData = Partial<Omit<Post, 'id' | 'slug' | 'author' | 'createdAt' | 'updatedAt'>> & { authorId?: string };
 export const updatePost = (slug: string, postData: UpdatePostData): Post | undefined => {
+  const currentUser = getCurrentUser();
+  if (!currentUser || !checkIsAdmin(currentUser.id)) {
+    throw new Error("Unauthorized: Only admins can update posts.");
+  }
+
   const postIndex = mockPosts.findIndex(p => p.slug === slug);
   if (postIndex === -1) {
     return undefined;
@@ -244,6 +248,10 @@ export const updatePost = (slug: string, postData: UpdatePostData): Post | undef
 
 // Function to delete a post
 export const deletePost = (slug: string): boolean => {
+  const currentUser = getCurrentUser();
+  if (!currentUser || !checkIsAdmin(currentUser.id)) {
+    throw new Error("Unauthorized: Only admins can delete posts.");
+  }
   const initialLength = mockPosts.length;
   mockPosts = mockPosts.filter(p => p.slug !== slug);
   return mockPosts.length < initialLength;
