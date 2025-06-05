@@ -5,19 +5,30 @@ import type { Post, User, CreatePostData, UpdatePostData } from '@/types';
 import { users, getCurrentUser, isAdmin as checkIsAdmin, MOCK_ADMIN_USER_ID } from './users';
 import { revalidatePath } from 'next/cache';
 
+// Helper function to generate slugs
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-') 
+    .replace(/[^\w-]+/g, '') 
+    .replace(/--+/g, '-'); 
+}
+
 // Pre-resolve authors to avoid complex expressions within mockPosts initialization
-const author1User = users.find(u => u.id === MOCK_ADMIN_USER_ID); // User '1' is 'xay' (admin)
-if (!author1User) {
-  throw new Error(`Critical: Default author with ID '${MOCK_ADMIN_USER_ID}' (admin) not found. Check users data in src/data/users.ts.`);
+const adminAuthorUser = users.find(u => u.id === MOCK_ADMIN_USER_ID);
+if (!adminAuthorUser) {
+  throw new Error(`Critical: Default admin author with ID '${MOCK_ADMIN_USER_ID}' not found. Check users data in src/data/users.ts.`);
 }
 
-const author2User = users.find(u => u.id === '2'); // User '2' is 'Bob The Builder'
-if (!author2User) {
-  throw new Error("Critical: Default author with ID '2' not found. Check users data in src/data/users.ts.");
+const bobAuthorUser = users.find(u => u.id === '2'); // User '2' is 'Bob The Builder'
+if (!bobAuthorUser) {
+  throw new Error("Critical: Default author with ID '2' (Bob The Builder) not found. Check users data in src/data/users.ts.");
 }
 
 
-let mockPosts: Post[] = [
+const initialMockPostsData: Post[] = [
   {
     id: '1',
     slug: 'first-amazing-post',
@@ -32,7 +43,7 @@ let mockPosts: Post[] = [
       <p>Once you start publishing, remember to engage with your readers. Respond to comments, ask questions, and build a community around your blog. This interaction can be incredibly rewarding and can help your blog grow.</p>
       <p>Happy blogging!</p>
     `,
-    author: author1User,
+    author: adminAuthorUser,
     createdAt: new Date('2024-01-15T10:00:00Z').toISOString(),
     updatedAt: new Date('2024-01-16T12:30:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -57,7 +68,7 @@ let mockPosts: Post[] = [
       <img src="https://placehold.co/800x400.png" alt="Placeholder for mountain landscape" data-ai-hint="mountain landscape" class="my-4 rounded-md shadow-md" />
       <p>Whether you're an avid hiker or just someone looking for a peaceful escape, the mountains have something to offer everyone. The tranquility and raw beauty of these majestic giants can rejuvenate your soul.</p>
     `,
-    author: author2User,
+    author: bobAuthorUser,
     createdAt: new Date('2024-02-10T14:30:00Z').toISOString(),
     updatedAt: new Date('2024-02-11T09:00:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -67,19 +78,21 @@ let mockPosts: Post[] = [
   },
 ];
 
-// Helper function to generate slugs
-function slugify(text: string): string {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-') 
-    .replace(/[^\w-]+/g, '') 
-    .replace(/--+/g, '-'); 
+declare global {
+  // eslint-disable-next-line no-var
+  var __mockPostsStore: Post[] | undefined;
+}
+
+if (process.env.NODE_ENV === 'production') {
+  global.__mockPostsStore = [...initialMockPostsData];
+} else {
+  if (!global.__mockPostsStore) {
+    global.__mockPostsStore = [...initialMockPostsData];
+  }
 }
 
 export async function getAllPosts(page: number = 1, limit: number = 6): Promise<{ posts: Post[], totalPages: number, currentPage: number }> {
-  const sortedPosts = [...mockPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const sortedPosts = [...global.__mockPostsStore!].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
   const paginatedPosts = sortedPosts.slice(startIndex, endIndex);
@@ -88,11 +101,11 @@ export async function getAllPosts(page: number = 1, limit: number = 6): Promise<
 };
 
 export async function getAllPostsForAdmin(): Promise<Post[]> {
-  return [...mockPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return [...global.__mockPostsStore!].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
 export async function getPostBySlug(slug: string): Promise<Post | undefined> {
-  return mockPosts.find(post => post.slug === slug);
+  return global.__mockPostsStore!.find(post => post.slug === slug);
 };
 
 export async function addPost(postData: CreatePostData): Promise<Post> {
@@ -101,19 +114,18 @@ export async function addPost(postData: CreatePostData): Promise<Post> {
     throw new Error("Unauthorized: Only admins can create posts.");
   }
 
-  const authorLookupId = postData.authorId || serverCurrentUser.id;
-  const author = users.find(u => u.id === authorLookupId);
-
+  const author = users.find(u => u.id === serverCurrentUser.id); // The current admin user is the author
   if (!author) {
-    console.error("CRITICAL: Author could not be resolved for the post. Author ID from postData:", postData.authorId, "Current admin user ID from server:", serverCurrentUser.id);
-    throw new Error(`Post author could not be determined. This is an unexpected error preventing post creation.`);
+    // This should ideally not happen if serverCurrentUser is valid and checkIsAdmin passed
+    console.error("CRITICAL: Admin author could not be resolved for new post. Admin ID:", serverCurrentUser.id);
+    throw new Error(`Post author (admin) could not be determined. This is an unexpected error preventing post creation.`);
   }
 
-  const newId = (mockPosts.length > 0 ? Math.max(...mockPosts.map(p => parseInt(p.id, 10))) : 0) + 1).toString();
+  const newId = (global.__mockPostsStore!.length > 0 ? Math.max(...global.__mockPostsStore!.map(p => parseInt(p.id, 10))) : 0) + 1).toString();
   const slug = slugify(postData.title);
   let finalSlug = slug;
   let counter = 1;
-  while (mockPosts.some(p => p.slug === finalSlug)) {
+  while (global.__mockPostsStore!.some(p => p.slug === finalSlug)) {
     finalSlug = `${slug}-${counter}`;
     counter++;
   }
@@ -122,12 +134,12 @@ export async function addPost(postData: CreatePostData): Promise<Post> {
     ...postData,
     id: newId,
     slug: finalSlug,
-    author, // Now guaranteed to be a User object
+    author, 
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : (postData.tags || []),
   };
-  mockPosts.unshift(newPost);
+  global.__mockPostsStore!.unshift(newPost);
 
   revalidatePath('/');
   revalidatePath(`/posts/${newPost.slug}`);
@@ -142,12 +154,12 @@ export async function updatePost(slug: string, postData: UpdatePostData): Promis
     throw new Error("Unauthorized: Only admins can update posts.");
   }
 
-  const postIndex = mockPosts.findIndex(p => p.slug === slug);
+  const postIndex = global.__mockPostsStore!.findIndex(p => p.slug === slug);
   if (postIndex === -1) {
     return undefined;
   }
 
-  const existingPost = mockPosts[postIndex];
+  const existingPost = global.__mockPostsStore![postIndex];
   const oldSlug = existingPost.slug;
 
   let newSlug = existingPost.slug;
@@ -155,15 +167,15 @@ export async function updatePost(slug: string, postData: UpdatePostData): Promis
     newSlug = slugify(postData.title);
     let finalSlug = newSlug;
     let counter = 1;
-    while (mockPosts.some(p => p.slug === finalSlug && p.id !== existingPost.id)) {
+    while (global.__mockPostsStore!.some(p => p.slug === finalSlug && p.id !== existingPost.id)) {
         finalSlug = `${newSlug}-${counter}`;
         counter++;
     }
     newSlug = finalSlug;
   }
   
-  const authorLookupId = postData.authorId || existingPost.author.id;
-  const author = users.find(u => u.id === authorLookupId);
+  const authorIdToSet = postData.authorId || existingPost.author.id;
+  const author = users.find(u => u.id === authorIdToSet);
 
   if (!author) {
      console.error("CRITICAL: Author could not be resolved for updating post. Author ID provided:", postData.authorId, "Existing author ID:", existingPost.author.id);
@@ -180,7 +192,7 @@ export async function updatePost(slug: string, postData: UpdatePostData): Promis
     tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : (postData.tags || existingPost.tags),
   };
 
-  mockPosts[postIndex] = updatedPost;
+  global.__mockPostsStore![postIndex] = updatedPost;
 
   revalidatePath('/');
   if (oldSlug !== updatedPost.slug) {
@@ -197,15 +209,14 @@ export async function deletePost(slug: string): Promise<boolean> {
   if (!currentUser || !checkIsAdmin(currentUser.id)) {
     throw new Error("Unauthorized: Only admins can delete posts.");
   }
-  const initialLength = mockPosts.length;
-  mockPosts = mockPosts.filter(p => p.slug !== slug);
+  const initialLength = global.__mockPostsStore!.length;
+  global.__mockPostsStore = global.__mockPostsStore!.filter(p => p.slug !== slug);
   
-  if (mockPosts.length < initialLength) {
+  if (global.__mockPostsStore!.length < initialLength) {
     revalidatePath('/');
-    revalidatePath(`/posts/${slug}`); // Revalidate the deleted post's page (will likely 404, but good to clear)
-    revalidatePath('/admin/posts'); // Revalidate admin posts list
+    revalidatePath(`/posts/${slug}`); 
+    revalidatePath('/admin/posts'); 
     return true;
   }
   return false;
 };
-
