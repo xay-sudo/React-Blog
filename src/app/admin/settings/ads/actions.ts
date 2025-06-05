@@ -51,3 +51,4 @@ export async function saveAdSettingsAction(values: AdSettingsActionInput): Promi
     throw new Error("Server failed to update ad settings. Please try again.");
   }
 }
+

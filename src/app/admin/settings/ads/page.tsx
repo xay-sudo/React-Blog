@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, useFieldArray } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import React from "react"; // Removed useEffect as it's no longer needed for form refresh here
+import React from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,7 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { getSiteSettings, type SiteSettings } from "@/data/siteSettings"; // SiteSettings type might be useful
+import { getSiteSettings, type SiteSettings } from "@/data/siteSettings";
 import { saveAdSettingsAction } from './actions';
 import type { AdSettingsActionInput } from './actions';
 import type { SnippetLocation } from '@/types';
@@ -57,7 +57,6 @@ export default function AdSettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // Fetch initial settings once for initial form population
   const initialSettings = React.useMemo(() => getSiteSettings(), []);
 
   const form = useForm<AdSettingsFormValues>({
@@ -73,9 +72,6 @@ export default function AdSettingsPage() {
     name: "snippets",
   });
 
-  // The useEffect previously here for formRefreshKey is removed.
-  // Form reset will now be handled in handleSubmit using data returned by the server action.
-
   const {formState: {isSubmitting, errors}} = form;
 
   const handleSubmit = async (values: AdSettingsFormValues) => {
@@ -90,7 +86,7 @@ export default function AdSettingsPage() {
         adsTxtContent: updatedSettings.adsTxtContent || "",
         snippets: updatedSettings.snippets || [],
       });
-      router.refresh(); // Still useful to refresh other server components or global state if any
+      router.refresh(); 
     } catch (error) {
       toast({
         title: "Error Updating Settings",
@@ -102,7 +98,7 @@ export default function AdSettingsPage() {
 
   const addNewSnippet = () => {
     append({
-      id: `new-${Math.random().toString(36).substr(2, 9)}`,
+      id: `new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`, // More robust unique ID
       name: "",
       code: "",
       location: "globalHeader" as SnippetLocation,
@@ -226,7 +222,6 @@ export default function AdSettingsPage() {
                                     <Trash2 className="mr-2 h-4 w-4" /> Delete Snippet
                                 </Button>
                             </div>
-                            {/* Display errors for individual snippets if necessary */}
                             {errors.snippets?.[index] && (
                                 <FormMessage className="mt-2 text-destructive">
                                     There are errors in this snippet. Please check all fields.
@@ -248,3 +243,4 @@ export default function AdSettingsPage() {
     </div>
   );
 }
+
