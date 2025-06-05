@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Playfair_Display, PT_Sans } from 'next/font/google';
 import Script from 'next/script';
@@ -6,6 +7,7 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
+import { getSiteSettings } from '@/data/siteSettings'; // Import site settings
 
 const playfairDisplay = Playfair_Display({
   subsets: ['latin'],
@@ -30,19 +32,27 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const siteSettings = getSiteSettings();
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* The next/font component handles font loading, so direct link tags are not strictly needed for these fonts. 
-            However, keeping the preconnects can be beneficial for performance. */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        
+        {/* AdSense Script (if not managed by headerScripts) */}
+        {/* You might choose to include the main AdSense script here directly OR via the headerScripts setting */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_PUBLISHER_ID"
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
+
+        {/* Injected Header Scripts */}
+        {siteSettings.headerScripts && (
+          <div dangerouslySetInnerHTML={{ __html: siteSettings.headerScripts }} />
+        )}
       </head>
       <body
         className={cn(
@@ -59,6 +69,11 @@ export default function RootLayout({
           <Footer />
         </div>
         <Toaster />
+        
+        {/* Injected Footer Scripts */}
+        {siteSettings.footerScripts && (
+          <div dangerouslySetInnerHTML={{ __html: siteSettings.footerScripts }} />
+        )}
       </body>
     </html>
   );
