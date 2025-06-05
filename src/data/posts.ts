@@ -2,21 +2,21 @@
 'use server';
 
 import type { Post, User, CreatePostData, UpdatePostData } from '@/types';
-import { users, getCurrentUser, isAdmin as checkIsAdmin } from './users';
+import { users, getCurrentUser, isAdmin as checkIsAdmin, MOCK_ADMIN_USER_ID } from './users';
 import { revalidatePath } from 'next/cache';
 
 // Pre-resolve authors to avoid complex expressions within mockPosts initialization
-const author1 = users.find(u => u.id === '1');
-if (!author1) {
-  throw new Error("Critical: Default author with ID '1' (xay) not found. Check users data in src/data/users.ts.");
+const author1User = users.find(u => u.id === MOCK_ADMIN_USER_ID); // User '1' is 'xay' (admin)
+if (!author1User) {
+  throw new Error(`Critical: Default author with ID '${MOCK_ADMIN_USER_ID}' (admin) not found. Check users data in src/data/users.ts.`);
 }
 
-const author2 = users.find(u => u.id === '2');
-if (!author2) {
-  throw new Error("Critical: Default author with ID '2' (Bob) not found. Check users data in src/data/users.ts.");
+const author2User = users.find(u => u.id === '2'); // User '2' is 'Bob The Builder'
+if (!author2User) {
+  throw new Error("Critical: Default author with ID '2' not found. Check users data in src/data/users.ts.");
 }
 
-// mockPosts is no longer exported directly. It's internal to this server module.
+
 let mockPosts: Post[] = [
   {
     id: '1',
@@ -32,7 +32,7 @@ let mockPosts: Post[] = [
       <p>Once you start publishing, remember to engage with your readers. Respond to comments, ask questions, and build a community around your blog. This interaction can be incredibly rewarding and can help your blog grow.</p>
       <p>Happy blogging!</p>
     `,
-    author: author1,
+    author: author1User,
     createdAt: new Date('2024-01-15T10:00:00Z').toISOString(),
     updatedAt: new Date('2024-01-16T12:30:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -57,7 +57,7 @@ let mockPosts: Post[] = [
       <img src="https://placehold.co/800x400.png" alt="Placeholder for mountain landscape" data-ai-hint="mountain landscape" class="my-4 rounded-md shadow-md" />
       <p>Whether you're an avid hiker or just someone looking for a peaceful escape, the mountains have something to offer everyone. The tranquility and raw beauty of these majestic giants can rejuvenate your soul.</p>
     `,
-    author: author2,
+    author: author2User,
     createdAt: new Date('2024-02-10T14:30:00Z').toISOString(),
     updatedAt: new Date('2024-02-11T09:00:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -65,7 +65,6 @@ let mockPosts: Post[] = [
     category: "Travel",
     tags: ["mountains", "hiking", "nature", "adventure"]
   },
-  // ... other posts
 ];
 
 // Helper function to generate slugs
@@ -74,9 +73,9 @@ function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w-]+/g, '') // Remove all non-word chars
-    .replace(/--+/g, '-'); // Replace multiple - with single -
+    .replace(/\s+/g, '-') 
+    .replace(/[^\w-]+/g, '') 
+    .replace(/--+/g, '-'); 
 }
 
 export async function getAllPosts(page: number = 1, limit: number = 6): Promise<{ posts: Post[], totalPages: number, currentPage: number }> {
@@ -97,12 +96,20 @@ export async function getPostBySlug(slug: string): Promise<Post | undefined> {
 };
 
 export async function addPost(postData: CreatePostData): Promise<Post> {
-  const currentUser = getCurrentUser();
-  if (!currentUser || !checkIsAdmin(currentUser.id)) {
+  const serverCurrentUser = getCurrentUser();
+  if (!serverCurrentUser || !checkIsAdmin(serverCurrentUser.id)) {
     throw new Error("Unauthorized: Only admins can create posts.");
   }
 
-  const newId = (Math.max(...mockPosts.map(p => parseInt(p.id, 10)), 0) + 1).toString();
+  const authorLookupId = postData.authorId || serverCurrentUser.id;
+  const author = users.find(u => u.id === authorLookupId);
+
+  if (!author) {
+    console.error("CRITICAL: Author could not be resolved for the post. Author ID from postData:", postData.authorId, "Current admin user ID from server:", serverCurrentUser.id);
+    throw new Error(`Post author could not be determined. This is an unexpected error preventing post creation.`);
+  }
+
+  const newId = (mockPosts.length > 0 ? Math.max(...mockPosts.map(p => parseInt(p.id, 10))) : 0) + 1).toString();
   const slug = slugify(postData.title);
   let finalSlug = slug;
   let counter = 1;
@@ -111,13 +118,11 @@ export async function addPost(postData: CreatePostData): Promise<Post> {
     counter++;
   }
 
-  const author = users.find(u => u.id === (postData.authorId || currentUser.id)) || currentUser;
-
   const newPost: Post = {
     ...postData,
     id: newId,
     slug: finalSlug,
-    author,
+    author, // Now guaranteed to be a User object
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : (postData.tags || []),
@@ -157,7 +162,14 @@ export async function updatePost(slug: string, postData: UpdatePostData): Promis
     newSlug = finalSlug;
   }
   
-  const author = postData.authorId ? users.find(u => u.id === postData.authorId) || existingPost.author : existingPost.author;
+  const authorLookupId = postData.authorId || existingPost.author.id;
+  const author = users.find(u => u.id === authorLookupId);
+
+  if (!author) {
+     console.error("CRITICAL: Author could not be resolved for updating post. Author ID provided:", postData.authorId, "Existing author ID:", existingPost.author.id);
+     throw new Error(`Post author could not be determined for update. This is an unexpected error.`);
+  }
+
 
   const updatedPost: Post = {
     ...existingPost,
@@ -190,9 +202,10 @@ export async function deletePost(slug: string): Promise<boolean> {
   
   if (mockPosts.length < initialLength) {
     revalidatePath('/');
-    revalidatePath(`/posts/${slug}`);
-    revalidatePath('/admin/posts');
+    revalidatePath(`/posts/${slug}`); // Revalidate the deleted post's page (will likely 404, but good to clear)
+    revalidatePath('/admin/posts'); // Revalidate admin posts list
     return true;
   }
   return false;
 };
+
