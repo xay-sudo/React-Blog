@@ -15,9 +15,9 @@ const author2 = users.find(u => u.id === '2');
 if (!author2) {
   throw new Error("Critical: Default author with ID '2' (Bob) not found. Check users data in src/data/users.ts.");
 }
-// If you have other posts in mockPosts that use specific authors, pre-resolve them here too.
 
-export let mockPosts: Post[] = [
+// mockPosts is no longer exported directly. It's internal to this server module.
+let mockPosts: Post[] = [
   {
     id: '1',
     slug: 'first-amazing-post',
@@ -32,7 +32,7 @@ export let mockPosts: Post[] = [
       <p>Once you start publishing, remember to engage with your readers. Respond to comments, ask questions, and build a community around your blog. This interaction can be incredibly rewarding and can help your blog grow.</p>
       <p>Happy blogging!</p>
     `,
-    author: author1, // Use pre-resolved author
+    author: author1,
     createdAt: new Date('2024-01-15T10:00:00Z').toISOString(),
     updatedAt: new Date('2024-01-16T12:30:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -57,7 +57,7 @@ export let mockPosts: Post[] = [
       <img src="https://placehold.co/800x400.png" alt="Placeholder for mountain landscape" data-ai-hint="mountain landscape" class="my-4 rounded-md shadow-md" />
       <p>Whether you're an avid hiker or just someone looking for a peaceful escape, the mountains have something to offer everyone. The tranquility and raw beauty of these majestic giants can rejuvenate your soul.</p>
     `,
-    author: author2, // Use pre-resolved author
+    author: author2,
     createdAt: new Date('2024-02-10T14:30:00Z').toISOString(),
     updatedAt: new Date('2024-02-11T09:00:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -120,7 +120,7 @@ export async function addPost(postData: CreatePostData): Promise<Post> {
     author,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : postData.tags,
+    tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : (postData.tags || []),
   };
   mockPosts.unshift(newPost);
 
@@ -165,7 +165,7 @@ export async function updatePost(slug: string, postData: UpdatePostData): Promis
     slug: newSlug,
     author,
     updatedAt: new Date().toISOString(),
-    tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : postData.tags || existingPost.tags,
+    tags: typeof postData.tags === 'string' ? postData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : (postData.tags || existingPost.tags),
   };
 
   mockPosts[postIndex] = updatedPost;

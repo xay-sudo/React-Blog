@@ -1,5 +1,5 @@
 
-import { getPostBySlug, mockPosts } from '@/data/posts';
+import { getPostBySlug, getAllPostsForAdmin } from '@/data/posts'; // Import getAllPostsForAdmin
 import { getSiteSettings } from '@/data/siteSettings';
 import type { Post, CodeSnippet } from '@/types';
 import { notFound } from 'next/navigation';
@@ -21,9 +21,8 @@ interface PostPageProps {
 
 // Statically generate routes at build time
 export async function generateStaticParams() {
-  // Since mockPosts is not async, and this function needs to return a promise if it awaits something,
-  // we can keep it simple. If mockPosts were fetched async, this would need to be async.
-  return mockPosts.map((post) => ({
+  const posts = await getAllPostsForAdmin(); // Fetch posts using the async function
+  return posts.map((post) => ({
     slug: post.slug,
   }));
 }
