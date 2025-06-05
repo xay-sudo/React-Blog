@@ -31,12 +31,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         router.replace('/login');
       } else {
         // User is "logged in" via localStorage, now check if they are the designated admin
-        const currentUser = getCurrentUser();
+        const currentUser = getCurrentUser(); // getCurrentUser now considers mockAdminLoggedIn
         const userIsActuallyAdmin = isAdmin(currentUser?.id);
         if (userIsActuallyAdmin) {
           setIsAuthorized(true);
         } else {
-          setIsAuthorized(false); // Logged in flag was true, but not the actual admin
+          // Logged in flag was true, but not the actual admin OR getCurrentUser didn't return admin
+          // This case might happen if localStorage was tampered or if getCurrentUser logic is strict
+          localStorage.removeItem('mockAdminLoggedIn'); // Clear tampered/invalid flag
+          router.replace('/login'); // Send back to login
         }
         setIsLoading(false);
       }
@@ -55,6 +58,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   if (!isAuthorized) {
     // This covers cases where localStorage flag was true but user isn't the actual admin,
     // or if the loading finished and they were simply not authorized.
+    // It might briefly show before redirection if !mockLoggedIn and then quickly redirect.
+    // Or show if mockLoggedIn was true, but userIsActuallyAdmin was false.
     return (
       <div className="flex min-h-[calc(100vh-var(--header-height,100px))] items-center justify-center p-4 sm:p-8">
         <Card className="w-full max-w-md shadow-xl">
