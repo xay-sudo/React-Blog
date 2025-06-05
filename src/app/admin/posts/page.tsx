@@ -10,8 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 export const dynamic = 'force-dynamic'; // Ensure fresh data on each request for admin
 
-export default function AdminPostsPage() {
-  const posts = getAllPostsForAdmin();
+export default async function AdminPostsPage() {
+  const posts = await getAllPostsForAdmin();
   const currentUser = getCurrentUser();
   const userIsAdmin = isAdmin(currentUser?.id);
 

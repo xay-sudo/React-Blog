@@ -11,7 +11,7 @@ interface EditPostPageProps {
   };
 }
 
-export default function EditPostPage({ params }: EditPostPageProps) {
+export default async function EditPostPage({ params }: EditPostPageProps) {
   const currentUser = getCurrentUser();
   const userIsAdmin = isAdmin(currentUser?.id);
 
@@ -28,7 +28,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
     );
   }
 
-  const post = getPostBySlug(params.slug);
+  const post = await getPostBySlug(params.slug);
 
   if (!post) {
     notFound();
@@ -40,7 +40,7 @@ export default function EditPostPage({ params }: EditPostPageProps) {
     try {
       // Keep original author unless explicitly changed and current user is admin
       const authorIdToSet = post?.author.id; 
-      updatePost(params.slug, { ...values, authorId: authorIdToSet });
+      await updatePost(params.slug, { ...values, authorId: authorIdToSet });
     } catch (error) {
       console.error("Failed to update post:", error);
       // The error.message will contain "Unauthorized" if that's the cause from updatePost

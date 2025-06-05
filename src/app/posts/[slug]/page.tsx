@@ -21,6 +21,8 @@ interface PostPageProps {
 
 // Statically generate routes at build time
 export async function generateStaticParams() {
+  // Since mockPosts is not async, and this function needs to return a promise if it awaits something,
+  // we can keep it simple. If mockPosts were fetched async, this would need to be async.
   return mockPosts.map((post) => ({
     slug: post.slug,
   }));
@@ -46,8 +48,8 @@ const RenderSnippets = ({ snippets, location }: { snippets: CodeSnippet[]; locat
 };
 
 
-export default function PostPage({ params }: PostPageProps) {
-  const post: Post | undefined = getPostBySlug(params.slug);
+export default async function PostPage({ params }: PostPageProps) {
+  const post: Post | undefined = await getPostBySlug(params.slug);
   const siteSettings = getSiteSettings();
   const allSnippets = siteSettings.snippets;
 

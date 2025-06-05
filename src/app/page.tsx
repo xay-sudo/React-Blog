@@ -1,3 +1,4 @@
+
 import PostCard from '@/components/common/PostCard';
 import PaginationControls from '@/components/common/PaginationControls';
 import { getAllPosts } from '@/data/posts';
@@ -10,11 +11,11 @@ interface HomePageProps {
   };
 }
 
-export default function HomePage({ searchParams }: HomePageProps) {
+export default async function HomePage({ searchParams }: HomePageProps) {
   const currentPage = Number(searchParams?.page) || 1;
   const postsPerPage = 6; 
 
-  const { posts, totalPages } = getAllPosts(currentPage, postsPerPage);
+  const { posts, totalPages } = await getAllPosts(currentPage, postsPerPage);
 
   // Ad placements on the homepage should now be managed via the 
   // "Code Snippets" feature in the Admin Panel.

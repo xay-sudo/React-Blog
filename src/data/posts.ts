@@ -1,7 +1,21 @@
 
+'use server';
+
 import type { Post, User, CreatePostData, UpdatePostData } from '@/types';
 import { users, getCurrentUser, isAdmin as checkIsAdmin } from './users';
 import { revalidatePath } from 'next/cache';
+
+// Pre-resolve authors to avoid complex expressions within mockPosts initialization
+const author1 = users.find(u => u.id === '1');
+if (!author1) {
+  throw new Error("Critical: Default author with ID '1' (xay) not found. Check users data in src/data/users.ts.");
+}
+
+const author2 = users.find(u => u.id === '2');
+if (!author2) {
+  throw new Error("Critical: Default author with ID '2' (Bob) not found. Check users data in src/data/users.ts.");
+}
+// If you have other posts in mockPosts that use specific authors, pre-resolve them here too.
 
 export let mockPosts: Post[] = [
   {
@@ -18,7 +32,7 @@ export let mockPosts: Post[] = [
       <p>Once you start publishing, remember to engage with your readers. Respond to comments, ask questions, and build a community around your blog. This interaction can be incredibly rewarding and can help your blog grow.</p>
       <p>Happy blogging!</p>
     `,
-    author: users.find(u => u.id === '1')!, // Alice (now Xay) is admin
+    author: author1, // Use pre-resolved author
     createdAt: new Date('2024-01-15T10:00:00Z').toISOString(),
     updatedAt: new Date('2024-01-16T12:30:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -43,7 +57,7 @@ export let mockPosts: Post[] = [
       <img src="https://placehold.co/800x400.png" alt="Placeholder for mountain landscape" data-ai-hint="mountain landscape" class="my-4 rounded-md shadow-md" />
       <p>Whether you're an avid hiker or just someone looking for a peaceful escape, the mountains have something to offer everyone. The tranquility and raw beauty of these majestic giants can rejuvenate your soul.</p>
     `,
-    author: users.find(u => u.id === '2')!, // Bob
+    author: author2, // Use pre-resolved author
     createdAt: new Date('2024-02-10T14:30:00Z').toISOString(),
     updatedAt: new Date('2024-02-11T09:00:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -65,7 +79,7 @@ function slugify(text: string): string {
     .replace(/--+/g, '-'); // Replace multiple - with single -
 }
 
-export const getAllPosts = (page: number = 1, limit: number = 6): { posts: Post[], totalPages: number, currentPage: number } => {
+export async function getAllPosts(page: number = 1, limit: number = 6): Promise<{ posts: Post[], totalPages: number, currentPage: number }> {
   const sortedPosts = [...mockPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
@@ -74,15 +88,15 @@ export const getAllPosts = (page: number = 1, limit: number = 6): { posts: Post[
   return { posts: paginatedPosts, totalPages, currentPage: page };
 };
 
-export const getAllPostsForAdmin = (): Post[] => {
+export async function getAllPostsForAdmin(): Promise<Post[]> {
   return [...mockPosts].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
-export const getPostBySlug = (slug: string): Post | undefined => {
+export async function getPostBySlug(slug: string): Promise<Post | undefined> {
   return mockPosts.find(post => post.slug === slug);
 };
 
-export const addPost = (postData: CreatePostData): Post => {
+export async function addPost(postData: CreatePostData): Promise<Post> {
   const currentUser = getCurrentUser();
   if (!currentUser || !checkIsAdmin(currentUser.id)) {
     throw new Error("Unauthorized: Only admins can create posts.");
@@ -110,14 +124,14 @@ export const addPost = (postData: CreatePostData): Post => {
   };
   mockPosts.unshift(newPost);
 
-  revalidatePath('/'); // Revalidate home page
-  revalidatePath(`/posts/${newPost.slug}`); // Revalidate the new post's page
-  revalidatePath('/admin/posts'); // Revalidate admin posts list
+  revalidatePath('/');
+  revalidatePath(`/posts/${newPost.slug}`);
+  revalidatePath('/admin/posts');
 
   return newPost;
 };
 
-export const updatePost = (slug: string, postData: UpdatePostData): Post | undefined => {
+export async function updatePost(slug: string, postData: UpdatePostData): Promise<Post | undefined> {
   const currentUser = getCurrentUser();
   if (!currentUser || !checkIsAdmin(currentUser.id)) {
     throw new Error("Unauthorized: Only admins can update posts.");
@@ -129,7 +143,7 @@ export const updatePost = (slug: string, postData: UpdatePostData): Post | undef
   }
 
   const existingPost = mockPosts[postIndex];
-  const oldSlug = existingPost.slug; // Keep old slug for revalidation if it changes
+  const oldSlug = existingPost.slug;
 
   let newSlug = existingPost.slug;
   if (postData.title && postData.title !== existingPost.title) {
@@ -156,17 +170,17 @@ export const updatePost = (slug: string, postData: UpdatePostData): Post | undef
 
   mockPosts[postIndex] = updatedPost;
 
-  revalidatePath('/'); // Revalidate home page
+  revalidatePath('/');
   if (oldSlug !== updatedPost.slug) {
-    revalidatePath(`/posts/${oldSlug}`); // Revalidate old slug path if changed
+    revalidatePath(`/posts/${oldSlug}`);
   }
-  revalidatePath(`/posts/${updatedPost.slug}`); // Revalidate new/current slug path
-  revalidatePath('/admin/posts'); // Revalidate admin posts list
+  revalidatePath(`/posts/${updatedPost.slug}`);
+  revalidatePath('/admin/posts');
   
   return updatedPost;
 };
 
-export const deletePost = (slug: string): boolean => {
+export async function deletePost(slug: string): Promise<boolean> {
   const currentUser = getCurrentUser();
   if (!currentUser || !checkIsAdmin(currentUser.id)) {
     throw new Error("Unauthorized: Only admins can delete posts.");
@@ -175,9 +189,9 @@ export const deletePost = (slug: string): boolean => {
   mockPosts = mockPosts.filter(p => p.slug !== slug);
   
   if (mockPosts.length < initialLength) {
-    revalidatePath('/'); // Revalidate home page
-    revalidatePath(`/posts/${slug}`); // Revalidate the deleted post's page (will likely 404, but good to clear)
-    revalidatePath('/admin/posts'); // Revalidate admin posts list
+    revalidatePath('/');
+    revalidatePath(`/posts/${slug}`);
+    revalidatePath('/admin/posts');
     return true;
   }
   return false;
