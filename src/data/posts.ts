@@ -16,7 +16,7 @@ function slugify(text: string): string {
     .replace(/--+/g, '-'); 
 }
 
-// Pre-resolve authors to avoid complex expressions within mockPosts initialization
+// Pre-resolve authors to avoid complex expressions within initialMockPostsData initialization
 const adminAuthorUser = users.find(u => u.id === MOCK_ADMIN_USER_ID);
 if (!adminAuthorUser) {
   throw new Error(`Critical: Default admin author with ID '${MOCK_ADMIN_USER_ID}' not found. Check users data in src/data/users.ts.`);
@@ -68,7 +68,7 @@ const initialMockPostsData: Post[] = [
       <img src="https://placehold.co/800x400.png" alt="Placeholder for mountain landscape" data-ai-hint="mountain landscape" class="my-4 rounded-md shadow-md" />
       <p>Whether you're an avid hiker or just someone looking for a peaceful escape, the mountains have something to offer everyone. The tranquility and raw beauty of these majestic giants can rejuvenate your soul.</p>
     `,
-    author: bobAuthorUser,
+    author: bobAuthorUser, // Use the pre-resolved bobAuthorUser
     createdAt: new Date('2024-02-10T14:30:00Z').toISOString(),
     updatedAt: new Date('2024-02-11T09:00:00Z').toISOString(),
     featuredImage: 'https://placehold.co/600x400.png',
@@ -83,13 +83,17 @@ declare global {
   var __mockPostsStore: Post[] | undefined;
 }
 
+// Initialize __mockPostsStore robustly
 if (process.env.NODE_ENV === 'production') {
-  global.__mockPostsStore = [...initialMockPostsData];
+  // In production, always start with a fresh copy of initial data, deep cloned
+  global.__mockPostsStore = JSON.parse(JSON.stringify(initialMockPostsData));
 } else {
+  // In development, persist across HMR if it exists, otherwise initialize with a deep clone
   if (!global.__mockPostsStore) {
-    global.__mockPostsStore = [...initialMockPostsData];
+    global.__mockPostsStore = JSON.parse(JSON.stringify(initialMockPostsData));
   }
 }
+
 
 export async function getAllPosts(page: number = 1, limit: number = 6): Promise<{ posts: Post[], totalPages: number, currentPage: number }> {
   const sortedPosts = [...global.__mockPostsStore!].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -114,14 +118,23 @@ export async function addPost(postData: CreatePostData): Promise<Post> {
     throw new Error("Unauthorized: Only admins can create posts.");
   }
 
-  const author = users.find(u => u.id === serverCurrentUser.id); // The current admin user is the author
+  const author = users.find(u => u.id === serverCurrentUser.id); 
   if (!author) {
-    // This should ideally not happen if serverCurrentUser is valid and checkIsAdmin passed
     console.error("CRITICAL: Admin author could not be resolved for new post. Admin ID:", serverCurrentUser.id);
     throw new Error(`Post author (admin) could not be determined. This is an unexpected error preventing post creation.`);
   }
+  
+  const currentPosts = global.__mockPostsStore!;
+  let maxId = 0;
+  if (currentPosts.length > 0) {
+    const ids = currentPosts.map(p => parseInt(p.id, 10));
+    const validIds = ids.filter(id => !isNaN(id)); // Filter out NaN values
+    if (validIds.length > 0) {
+      maxId = Math.max(...validIds);
+    }
+  }
+  const newId = (maxId + 1).toString();
 
-  const newId = (global.__mockPostsStore!.length > 0 ? Math.max(...global.__mockPostsStore!.map(p => parseInt(p.id, 10))) : 0) + 1).toString();
   const slug = slugify(postData.title);
   let finalSlug = slug;
   let counter = 1;
