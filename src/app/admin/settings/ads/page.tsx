@@ -2,10 +2,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form"; // Removed Controller as it's not explicitly used for Select in this version
+import { useForm, useFieldArray } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import React, { useEffect } from "react"; // Import React for useState
 
 import { Button } from "@/components/ui/button";
 import {
@@ -56,14 +56,16 @@ type AdSettingsFormValues = z.infer<typeof formSchema>;
 export default function AdSettingsPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [formRefreshKey, setFormRefreshKey] = React.useState(0); // Key to trigger form reset
 
-  const currentSettings = getSiteSettings();
+  // Fetch initial settings once
+  const initialSettings = React.useMemo(() => getSiteSettings(), []);
 
   const form = useForm<AdSettingsFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      adsTxtContent: currentSettings.adsTxtContent || "",
-      snippets: currentSettings.snippets || [],
+      adsTxtContent: initialSettings.adsTxtContent || "",
+      snippets: initialSettings.snippets || [],
     },
   });
 
@@ -73,12 +75,13 @@ export default function AdSettingsPage() {
   });
 
   useEffect(() => {
+    // This effect runs when formRefreshKey changes, ensuring form resets with latest data
     const freshSettings = getSiteSettings(); 
     form.reset({
         adsTxtContent: freshSettings.adsTxtContent || "",
         snippets: freshSettings.snippets || [],
     });
-  }, [form, router]);
+  }, [form, formRefreshKey]); // Depend on formRefreshKey
 
   const {formState: {isSubmitting, errors}} = form;
 
@@ -90,6 +93,7 @@ export default function AdSettingsPage() {
         description: "Your advertising configurations have been saved.",
       });
       router.refresh(); 
+      setFormRefreshKey(prevKey => prevKey + 1); // Increment key to trigger useEffect
     } catch (error) {
       toast({
         title: "Error Updating Settings",
@@ -104,7 +108,7 @@ export default function AdSettingsPage() {
       id: `new-${Math.random().toString(36).substr(2, 9)}`, 
       name: "",
       code: "",
-      location: "globalHeader" as SnippetLocation, // Default to globalHeader
+      location: "globalHeader" as SnippetLocation,
       isActive: true,
     });
   };
@@ -225,7 +229,12 @@ export default function AdSettingsPage() {
                                     <Trash2 className="mr-2 h-4 w-4" /> Delete Snippet
                                 </Button>
                             </div>
-                            {errors.snippets?.[index] && <FormMessage className="mt-2">Please correct errors in this snippet.</FormMessage>}
+                            {/* Display errors for individual snippets if necessary */}
+                            {errors.snippets?.[index] && (
+                                <FormMessage className="mt-2 text-destructive">
+                                    There are errors in this snippet. Please check all fields.
+                                </FormMessage>
+                            )}
                         </Card>
                     ))}
                     {fields.length === 0 && <p className="text-muted-foreground text-center py-4">No snippets added yet. Click "Add Snippet" to create one.</p>}
