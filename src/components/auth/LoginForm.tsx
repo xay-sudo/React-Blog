@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,19 +20,20 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn } from "lucide-react";
-import { users, MOCK_ADMIN_USER_ID } from "@/data/users"; // Import user data
+import { users, MOCK_ADMIN_USER_ID } from "@/data/users";
 
 const formSchema = z.object({
   identifier: z.string().min(3, {
     message: "Email or Username must be at least 3 characters.",
   }),
-  password: z.string().min(6, {
+  password: z.string().min(6, { // Password validation remains, though not used for auth logic here
     message: "Password must be at least 6 characters.",
   }),
 });
 
 export default function LoginForm() {
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -42,28 +44,28 @@ export default function LoginForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log("Login submitted:", values);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
 
     const adminUser = users.find(user => user.id === MOCK_ADMIN_USER_ID);
     let loginSuccess = false;
 
     if (adminUser) {
       if (values.identifier.toLowerCase() === adminUser.email.toLowerCase() || values.identifier.toLowerCase() === adminUser.name.toLowerCase()) {
-        // In a real app, you would also validate the password here against a hash.
-        // For this mock, we'll assume password "Dell123" is correct if identifier matches.
-        // if (values.password === "Dell123") { // Optional: mock password check
+        // For this mock, we assume password "Dell123" is correct if identifier matches for the admin.
+        // No actual password check is performed against a hash.
+        // if (values.password === "Dell123") {
         loginSuccess = true;
         // }
       }
     }
 
     if (loginSuccess) {
+      localStorage.setItem('mockAdminLoggedIn', 'true');
       toast({
         title: "Login Successful (Mock)",
-        description: `Welcome, ${adminUser?.name || 'Admin'}!`,
+        description: `Welcome, ${adminUser?.name || 'Admin'}! Redirecting...`,
       });
-      // Here you might redirect the user, e.g., router.push('/admin');
+      router.push('/admin');
     } else {
       toast({
         title: "Login Failed (Mock)",

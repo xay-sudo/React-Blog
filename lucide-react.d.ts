@@ -21,17 +21,19 @@ declare module 'lucide-react' {
     export const Folder: LucideIcon;
     export const ArrowLeft: LucideIcon;
     export const LogIn: LucideIcon;
+    export const LogOut: LucideIcon; // Added LogOut
     export const UserPlus: LucideIcon;
     export const ChevronLeft: LucideIcon;
     export const ChevronRight: LucideIcon;
     export const ArrowRight: LucideIcon;
     export const BookOpenText: LucideIcon;
     export const ShieldCheck: LucideIcon;
+    export const ShieldAlert: LucideIcon; // Added ShieldAlert
     export const Check: LucideIcon;
     export const X: LucideIcon;
     export const Circle: LucideIcon;
     export const PanelLeft: LucideIcon;
-    export const Code: LucideIcon; // Added Code icon
+    export const Code: LucideIcon; 
     // Add other icons your application uses here by name
   
     // Fallback for any icon not explicitly listed (less type-safe but avoids build errors for missing declarations)
